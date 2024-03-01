@@ -1,4 +1,6 @@
-# trello2gitlab
+# trello2gitlabextended
+
+This is a (manual) fork from https://github.com/TristanPct/trello2gitlab
 
 *Convert Trello cards to GitLab issues.*
 
