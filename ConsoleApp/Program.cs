@@ -6,7 +6,9 @@ using Trello2GitLab.Conversion;
 
 namespace Trello2GitLab.ConsoleApp
 {
-    internal enum ExitCode
+	using System.ComponentModel.DataAnnotations;
+
+	internal enum ExitCode
     {
         InvalidArguments = -1,
         Success = 0,
@@ -28,9 +30,15 @@ namespace Trello2GitLab.ConsoleApp
                 return (int)await RunConversion(args[0]);
             }
 #if DEBUG
-            else if(args.Length == 2 && (args[1] == "--delete"))
+            else if(args.Length >= 2 && (args[1] == "--delete"))
             {
-                return (int)await RunDeletion(args[0]);
+	            var idGreaterThan = 0;
+	            if (args.Length > 2)
+	            {
+		            idGreaterThan = int.Parse(args[2]);
+				}
+
+                return (int)await RunDeletion(args[0], idGreaterThan);
             }
 #endif
             else
@@ -105,7 +113,7 @@ Options file format:
         }
 
 #if DEBUG
-        private static async Task<ExitCode> RunDeletion(string optionsFilePath)
+        private static async Task<ExitCode> RunDeletion(string optionsFilePath, int idGreaterThan)
         {
             if (!TryGetConverterOptions(optionsFilePath, out ConverterOptions options))
             {
@@ -113,11 +121,11 @@ Options file format:
                 return ExitCode.OptionsError;
             }
 
-            Console.WriteLine("Deleting issues...");
+            Console.WriteLine($"Deleting issues with ID greater than {idGreaterThan}...");
 
             using (var converter = new Converter(options))
             {
-                await converter.DeleteAllIssues();
+                await converter.DeleteAllIssues(idGreaterThan);
             }
 
             Console.WriteLine("Issues deleted.");

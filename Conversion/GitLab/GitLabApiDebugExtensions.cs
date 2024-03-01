@@ -13,13 +13,16 @@ namespace Trello2GitLab.Conversion.GitLab
         /// <remarks>
         /// Used for internal tests.
         /// </remarks>
-        internal static async Task DeleteAllIssues(this GitLabApi api)
+        internal static async Task DeleteAllIssues(this GitLabApi api, int idGreaterThan)
         {
             var issues = await api.GetAllIssues();
 
             foreach (var issue in issues)
             {
-                await api.Request(HttpMethod.Delete, $"/issues/{issue.Iid}");
+	            if (issue.Iid > idGreaterThan)
+	            {
+					await api.Request(HttpMethod.Delete, $"/issues/{issue.Iid}");
+				}
             }
         }
 

@@ -34,14 +34,11 @@ namespace Trello2GitLab.Conversion.GitLab
 			ProjectUrl = $"{BaseUrl}/projects/{options.ProjectId}";
 			Token = options.Token;
 			Sudo = options.Sudo;
-			ProjectId = options.ProjectId;
 
 			client = new HttpClient();
 			client.DefaultRequestHeaders.Add("Accept", "application/json");
 			client.DefaultRequestHeaders.Add("PRIVATE-TOKEN", Token);
 		}
-
-		public int ProjectId { get; set; }
 
 		public string BaseUrl { get; }
 

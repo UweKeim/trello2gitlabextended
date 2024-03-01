@@ -605,9 +605,9 @@ namespace Trello2GitLab.Conversion
 		/// <remarks>
 		/// Used for internal tests.
 		/// </remarks>
-		public async Task DeleteAllIssues()
+		public async Task DeleteAllIssues(int idGreaterThan)
 		{
-			await gitlab.DeleteAllIssues();
+			await gitlab.DeleteAllIssues(idGreaterThan);
 		}
 #endif
 	}

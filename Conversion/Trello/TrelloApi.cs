@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 
 namespace Trello2GitLab.Conversion.Trello
 {
+	using System.Text;
+
 	/// <summary>
 	/// Trello Api helper.
 	/// </summary>
@@ -137,7 +139,15 @@ namespace Trello2GitLab.Conversion.Trello
 			var url = $"{attachmentUrl}?key={Key}&token={Token}";
 			using var response = await client.GetAsync(url);
 
-			return await response.Content.ReadAsByteArrayAsync();
+			var bytes = await response.Content.ReadAsByteArrayAsync();
+
+			if ((int)response.StatusCode >= 400)
+			{
+				var contentString = Encoding.Default.GetString(bytes);
+				throw new ApiException(response, contentString);
+			}
+
+			return bytes;
 		}
 	}
 }
