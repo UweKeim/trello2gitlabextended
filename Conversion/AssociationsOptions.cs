@@ -28,5 +28,10 @@ namespace Trello2GitLab.Conversion
         /// Trello member ID to GitLab user ID.
         /// </summary>
         public Dictionary<string, int> Members_Users { get; set; }
+
+        /// <summary>
+        /// "@someuserintrello" => "@someuseringitlab".
+        /// </summary>
+        public Dictionary<string, string> Mentions { get; set; }
     }
 }

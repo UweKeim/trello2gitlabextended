@@ -8,6 +8,7 @@ using Trello2GitLab.Conversion.Trello;
 namespace Trello2GitLab.Conversion
 {
 	using System.IO;
+	using System.Text.RegularExpressions;
 
 	public class Converter : IDisposable
 	{
@@ -313,6 +314,7 @@ namespace Trello2GitLab.Conversion
 
 				description = GetCardDescriptionWithChecklists(card).Truncate(DESCRIPTION_MAX_LENGTH);
 				description = replaceAttachments(description, attachmentUrlMappings, false);
+				description = replaceMentions(description);
 
 				issue = await gitlab.CreateIssue(new NewIssue()
 				{
@@ -343,7 +345,7 @@ namespace Trello2GitLab.Conversion
 						issue,
 						new NewIssueNote()
 						{
-							Body = replaceAttachments(commentAction.Data.Text, attachmentUrlMappings, false),
+							Body = replaceMentions(replaceAttachments(commentAction.Data.Text, attachmentUrlMappings, false)),
 							CreatedAt = commentAction.Date,
 						},
 						FindAssociatedUserId(commentAction.IdMemberCreator)
@@ -423,6 +425,21 @@ namespace Trello2GitLab.Conversion
 				string issueInfos = issue != null ? $"\nIssue: {issue.Id} (#{issue.Iid})" : "";
 				return $"Error while {actionContext}: {exception.Message}\nCard: {card.Id}{issueInfos}";
 			}
+		}
+
+		private string replaceMentions(string text)
+		{
+			if (string.IsNullOrEmpty(text)) return text;
+
+			foreach (var mention in associations.Mentions)
+			{
+				var trelloMention = $@"{mention.Key.Trim('@')}";
+				var gitlabMention = $"@{mention.Value.Trim('@')}";
+
+				text = Regex.Replace(text, $@"@\b{Regex.Escape(trelloMention)}\b", gitlabMention, RegexOptions.IgnoreCase);
+			}
+
+			return text;
 		}
 
 		/// <summary>
