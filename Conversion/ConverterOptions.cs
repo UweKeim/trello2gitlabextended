@@ -3,7 +3,7 @@ using Trello2GitLab.Conversion.Trello;
 
 namespace Trello2GitLab.Conversion;
 
-public class ConverterOptions
+public sealed class ConverterOptions
 {
 	public GlobalOptions Global { get; set; }
 

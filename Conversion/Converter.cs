@@ -39,6 +39,11 @@ public sealed class Converter : IDisposable
 		GC.SuppressFinalize(this);
 	}
 
+	~Converter()
+	{
+		Dispose(false);
+	}
+
 	private void Dispose(bool disposing)
 	{
 		if (isDisposed)
@@ -80,7 +85,7 @@ public sealed class Converter : IDisposable
 		if (string.IsNullOrEmpty(options.Trello.BoardId))
 			throw new ArgumentNullException(nameof(ConverterOptions.Trello.BoardId), "Missing Trello board ID.");
 
-		if (!new string[] { "all", "open", "visible", "closed" }.Contains(options.Trello.Include))
+		if (!new[] { "all", "open", "visible", "closed" }.Contains(options.Trello.Include))
 			throw new ArgumentException("Valid values are: 'all', 'open', 'visible' or 'closed'", nameof(ConverterOptions.Trello.Include));
 
 		if (string.IsNullOrEmpty(options.GitLab.Token))
@@ -88,6 +93,122 @@ public sealed class Converter : IDisposable
 
 		if (options.GitLab.ProjectId == default)
 			throw new ArgumentNullException(nameof(ConverterOptions.GitLab.ProjectId), "Missing GitLab project ID.");
+	}
+
+	/// <summary>
+	/// Adjusts the mentions inside the GitLab issues and their comments.
+	/// </summary>
+	/// <param name="progress">A progress update provider.</param>
+	public async Task<bool> AdjustMentions(IProgress<ConversionProgressReport> progress)
+	{
+		progress.Report(new("Starting to adjust mentions."));
+
+		// --
+		// Grant admin privileges if Sudo option provided.
+
+		var nonAdminUsers = new List<User>();
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.GrantAdminPrivileges));
+
+			var users = await gitlab.GetAllUsers();
+
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+
+			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesGranted));
+		}
+
+		// --
+
+		var issues = await gitlab.GetAllIssues();
+
+		var totalIssues = issues.Count;
+
+		for (var i = 0; i < totalIssues; i++)
+		{
+			var any = false;
+
+			progress.Report(new($"{i + 1}/{totalIssues} Adjusting mentions."));
+
+			var issue = issues[i];
+
+			// Adjust issue description.
+			var description = replaceMentions(issue.Description);
+
+			if (description != issue.Description)
+			{
+				try
+				{
+					await gitlab.EditIssueDescription(
+						issue.Iid,
+						new()
+						{
+							Description = description,
+						});
+
+					any = true;
+				}
+				catch (ApiException exception)
+				{
+					progress.Report(new(
+						$"Error while editing issue description: {exception.Message}\nIssue: {issue.Id} (#{issue.Iid})"));
+				}
+			}
+
+			// Also adjust notes.
+			var comments = await gitlab.GetAllIssueNotes(issue.Iid);
+
+			foreach (var comment in comments)
+			{
+				var editedComment = new ModifyIssueNote
+				{
+					Body = replaceMentions(comment.Body)
+				};
+
+				if (comment.Body != editedComment.Body)
+				{
+					try
+					{
+						await gitlab.ModifyIssueNote(
+							issue,
+							comment.Id,
+							editedComment);
+
+						any = true;
+					}
+					catch (ApiException exception)
+					{
+						progress.Report(new(
+							$"Error while editing issue note: {exception.Message}\nIssue: {issue.Id} (#{issue.Iid})\nComment: {comment.Id}"));
+					}
+				}
+			}
+
+			if (any)
+			{
+				progress.Report(new($"    => Adjusted mentions."));
+			}
+		}
+
+		// --
+		// Revoke admin privileges (of non admin users) if Sudo option provided.
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.RevokeAdminPrivileges));
+
+			await SetUserAdminPrivileges(nonAdminUsers, false, progress, ConversionStep.RevokeAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesRevoked));
+		}
+
+		// --
+
+		progress.Report(new("Finished adjusting mentions."));
+		return true;
 	}
 
 	/// <summary>
@@ -149,7 +270,7 @@ public sealed class Converter : IDisposable
 				}
 				else
 				{
-					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones, new string[] { $"Error while fetching milestone: milestone with iid '{labelMilestone.Value}' not found on project" }));
+					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones, new[] { $"Error while fetching milestone: milestone with iid '{labelMilestone.Value}' not found on project" }));
 				}
 
 				i++;
@@ -169,7 +290,7 @@ public sealed class Converter : IDisposable
 				}
 				else
 				{
-					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones, new string[] { $"Error while fetching milestone: milestone with iid '{listMilestone.Value}' not found on project" }));
+					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones, new[] { $"Error while fetching milestone: milestone with iid '{listMilestone.Value}' not found on project" }));
 				}
 
 				i++;
@@ -231,7 +352,7 @@ public sealed class Converter : IDisposable
 			}
 			catch (ApiException exception)
 			{
-				progress.Report(new(step, i, users.Count, new string[] { $"Error while {(admin ? "granting" : "revoking")} admin privilege: {exception.Message}\nUser: {user.Id} ({user.Username})" }));
+				progress.Report(new(step, i, users.Count, new[] { $"Error while {(admin ? "granting" : "revoking")} admin privilege: {exception.Message}\nUser: {user.Id} ({user.Username})" }));
 			}
 		}
 	}
@@ -259,7 +380,7 @@ public sealed class Converter : IDisposable
 		var createAction = FindCreateCardAction(card);
 		var createdBy = FindAssociatedUserId(createAction?.IdMemberCreator);
 
-		var assignees = card.IdMembers?.Select(m => FindAssociatedUserId(m)).Where(u => u != null).Cast<int>();
+		var assignees = card.IdMembers?.Select(FindAssociatedUserId).Where(u => u != null).Cast<int>();
 
 		var labels = GetCardAssociatedLabels(card);
 
@@ -267,8 +388,8 @@ public sealed class Converter : IDisposable
 
 		// Creates GitLab issue.
 
-		Issue issue = null;
-		string description = null;
+		Issue ?issue = null;
+		string? description;
 
 		// Verlinkungen anpassen.
 		var attachmentUrlMappings = new List<AttachmentMapping>();
@@ -312,7 +433,7 @@ public sealed class Converter : IDisposable
 					CreatedAt = createAction?.Date ?? card.DateLastActivity,
 					Title = card.Name.Truncate(TITLE_MAX_LENGTH),
 					Description = description,
-					Labels = labels != null ? string.Join(',', labels) : null,
+					Labels = labels.Any() ? string.Join(',', labels) : null,
 					AssisgneeIds = assignees,
 					DueDate = card.Due,
 					MilestoneId = GetCardAssociatedMilestone(card),
@@ -418,7 +539,7 @@ public sealed class Converter : IDisposable
 		}
 	}
 
-	private string replaceMentions(string text)
+	private string? replaceMentions(string? text)
 	{
 		if (string.IsNullOrEmpty(text)) return text;
 

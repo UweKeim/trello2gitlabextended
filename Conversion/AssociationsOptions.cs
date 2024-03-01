@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion;
 
-public class AssociationsOptions
+public sealed class AssociationsOptions
 {
 	/// <summary>
 	/// Trello label ID to GitLab label name.

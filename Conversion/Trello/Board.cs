@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.Trello;
 
-public class Board
+public sealed class Board
 {
 	public string Id { get; set; }
 

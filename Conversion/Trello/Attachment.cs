@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.Trello;
 
-public class Attachment
+public sealed class Attachment
 {
 	public string Id { get; set; }
 	public string Bytes { get; set; }

@@ -14,6 +14,7 @@
     <PackageId>Trello2GitLab.ConsoleApp</PackageId>
     <Version>0.2.1</Version>
     <AssemblyVersion>0.2.1.0</AssemblyVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.GitLab;
 
-public class EditUser
+public sealed class EditUser
 {
 	public int Id { get; set; }
 

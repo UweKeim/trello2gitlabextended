@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.GitLab;
 
-public class Upload
+public sealed class Upload
 {
 	[JsonProperty("alt")]
 	public string Alt { get; set; }

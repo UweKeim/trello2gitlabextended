@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.Trello;
 
-public class ChecklistItem
+public sealed class ChecklistItem
 {
 	public string Id { get; set; }
 

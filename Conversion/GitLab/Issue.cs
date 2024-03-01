@@ -3,15 +3,16 @@
 /// <summary>
 /// https://docs.gitlab.com/ee/api/issues.html
 /// </summary>
-public class Issue
+public sealed class Issue
 {
 	public int Id { get; set; }
 
 	public int Iid { get; set; }
 
-	public string Title { get; set; }
+	public string? Title { get; set; }
+	public string? Description { get; set; }
 
-	public string State { get; set; }
+	public string? State { get; set; }
 
 	public IReadOnlyList<User> Assignees { get; set; }
 

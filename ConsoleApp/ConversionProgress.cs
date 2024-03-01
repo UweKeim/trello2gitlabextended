@@ -25,7 +25,7 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 				Print("Granting admin privileges...\n");
 				return;
 
-			case ConversionStep.GrantAdminPrivileges when value.TotalElements != null && value.Errors == null:
+			case ConversionStep.GrantAdminPrivileges when value is { TotalElements: not null, Errors: null }:
 				Print($"Granting privilege (user {value.CurrentIndex + 1} of {value.TotalElements})\r");
 				return;
 
@@ -37,7 +37,7 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 				Print("Fetching project milestones...\n");
 				return;
 
-			case ConversionStep.FetchMilestones when value.TotalElements != null && value.Errors == null:
+			case ConversionStep.FetchMilestones when value is { TotalElements: not null, Errors: null }:
 				Print($"Fetching milestone ({value.CurrentIndex + 1} of {value.TotalElements})\r");
 				return;
 
@@ -49,7 +49,7 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 				Print("Starting cards conversion...\n");
 				return;
 
-			case ConversionStep.ConvertingCards when value.TotalElements != null && value.Errors == null:
+			case ConversionStep.ConvertingCards when value is { TotalElements: not null, Errors: null }:
 				Print($"Converting card ({value.CurrentIndex + 1} of {value.TotalElements})\r");
 				return;
 
@@ -61,7 +61,7 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 				Print("Revoking admin privileges...\n");
 				return;
 
-			case ConversionStep.RevokeAdminPrivileges when value.TotalElements != null && value.Errors == null:
+			case ConversionStep.RevokeAdminPrivileges when value is { TotalElements: not null, Errors: null }:
 				Print($"Revoking privilege (user {value.CurrentIndex + 1} of {value.TotalElements})\r");
 				return;
 
@@ -73,19 +73,34 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 				PrintSuccess("\nConversion done.");
 				return;
 
-			case ConversionStep.GrantAdminPrivileges when value.TotalElements != null && value.Errors != null:
-			case ConversionStep.ConvertingCards when value.TotalElements != null && value.Errors != null:
-			case ConversionStep.RevokeAdminPrivileges when value.TotalElements != null && value.Errors != null:
+			case ConversionStep.GrantAdminPrivileges when value is { TotalElements: not null, Errors: not null }:
+			case ConversionStep.ConvertingCards when value is { TotalElements: not null, Errors: not null }:
+			case ConversionStep.RevokeAdminPrivileges when value is { TotalElements: not null, Errors: not null }:
 				Print("\n");
 				foreach (var error in value.Errors)
 				{
 					PrintError(error + "\n");
 				}
 				return;
+
+			case ConversionStep.Custom:
+				Print(value.CustomInfo + "\n");
+				Print("\n");
+				if (value.Errors != null)
+				{
+					foreach (var error in value.Errors)
+					{
+						PrintError(error + "\n");
+					}
+				}
+				return;
+
+			default:
+				throw new ArgumentOutOfRangeException(nameof(value), value, null);
 		}
 	}
 
-	public void Print(string message)
+	private void Print(string message)
 	{
 		lock (messageLock)
 		{
@@ -93,7 +108,7 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 		}
 	}
 
-	public void PrintSuccess(string message)
+	private void PrintSuccess(string message)
 	{
 		lock (messageLock)
 		{
@@ -103,7 +118,7 @@ internal class ConversionProgress : IProgress<ConversionProgressReport>
 		}
 	}
 
-	public void PrintError(string message)
+	private void PrintError(string message)
 	{
 		lock (messageLock)
 		{

@@ -19,24 +19,46 @@ public static class Program
 			ShowHelp();
 			return (int)ExitCode.Success;
 		}
-		else if (args.Length == 1)
-		{
-			return (int)await RunConversion(args[0]);
-		}
-		else if(args.Length >= 2 && (args[1] == "--delete"))
-		{
-			var idGreaterThan = 0;
-			if (args.Length > 2)
-			{
-				idGreaterThan = int.Parse(args[2]);
-			}
-
-			return (int)await RunDeletion(args[0], idGreaterThan);
-		}
 		else
 		{
-			await Console.Error.WriteAsync("Invalid arguments supplied.\nUse -h option to see help.");
-			return (int)ExitCode.InvalidArguments;
+			var optionsFilePath = args[0];
+			if (!TryGetConverterOptions(optionsFilePath, out var options) || options == null)
+			{
+				await Console.Error.WriteLineAsync($"The options file cannot be located at: {optionsFilePath}");
+				return (int)ExitCode.OptionsError;
+			}
+
+			// Auch per Befehlszeile konfigurierbar.
+			switch (args)
+			{
+				case [_, "--delete", ..]:
+				{
+					options.Global.Action = ConverterAction.DeleteIssues;
+					if (args.Length > 2)
+					{
+						options.Global.DeleteIfGreaterThanIssueId = int.Parse(args[2]);
+					}
+
+					break;
+				}
+				case [_, "--adjustmentions"]:
+					options.Global.Action = ConverterAction.AdjustMentions;
+					break;
+			}
+
+			// Execute the desired action.
+			switch (options.Global.Action)
+			{
+				case ConverterAction.All:
+					return (int)await RunConversion(options);
+				case ConverterAction.AdjustMentions:
+					return (int)await RunAdjustMentions(options);
+				case ConverterAction.DeleteIssues:
+					return (int)await RunDeletion(options);
+				default:
+					await Console.Error.WriteAsync("Invalid arguments supplied.\nUse -h option to see help.");
+					return (int)ExitCode.InvalidArguments;
+			}
 		}
 	}
 
@@ -89,33 +111,29 @@ public static class Program
 				""".Trim());
 	}
 
-	private static async Task<ExitCode> RunConversion(string optionsFilePath)
+	private static async Task<ExitCode> RunConversion(ConverterOptions options)
 	{
-		if (!TryGetConverterOptions(optionsFilePath, out var options))
-		{
-			await Console.Error.WriteLineAsync($"The options file cannot be located at: {optionsFilePath}");
-			return ExitCode.OptionsError;
-		}
-
 		using var converter = new Converter(options);
 		var success = await converter.ConvertAll(new ConversionProgress());
 
 		return success ? ExitCode.Success : ExitCode.ConversionError;
 	}
 
-	private static async Task<ExitCode> RunDeletion(string optionsFilePath, int idGreaterThan)
+	private static async Task<ExitCode> RunAdjustMentions(ConverterOptions options)
 	{
-		if (!TryGetConverterOptions(optionsFilePath, out var options))
-		{
-			await Console.Error.WriteLineAsync($"The options file cannot be located at: {optionsFilePath}");
-			return ExitCode.OptionsError;
-		}
+		using var converter = new Converter(options);
+		var success = await converter.AdjustMentions(new ConversionProgress());
 
-		Console.WriteLine($"Deleting issues with ID greater than {idGreaterThan}...");
+		return success ? ExitCode.Success : ExitCode.ConversionError;
+	}
+
+	private static async Task<ExitCode> RunDeletion(ConverterOptions options)
+	{
+		Console.WriteLine($"Deleting issues with ID greater than {options.Global.DeleteIfGreaterThanIssueId}...");
 
 		using (var converter = new Converter(options))
 		{
-			await converter.DeleteAllIssues(idGreaterThan);
+			await converter.DeleteAllIssues(options.Global.DeleteIfGreaterThanIssueId);
 		}
 
 		Console.WriteLine("Issues deleted.");
@@ -123,7 +141,7 @@ public static class Program
 		return ExitCode.Success;
 	}
 
-	private static bool TryGetConverterOptions(string optionsFilePath, out ConverterOptions options)
+	private static bool TryGetConverterOptions(string optionsFilePath, out ConverterOptions? options)
 	{
 		options = null;
 

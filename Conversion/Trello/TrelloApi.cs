@@ -8,7 +8,7 @@ namespace Trello2GitLab.Conversion.Trello;
 /// </summary>
 internal class TrelloApi : IDisposable
 {
-	protected static readonly JsonSerializerSettings jsonSettings = new()
+	private static readonly JsonSerializerSettings jsonSettings = new()
 	{
 		ContractResolver = new DefaultContractResolver()
 		{
@@ -18,7 +18,7 @@ internal class TrelloApi : IDisposable
 		NullValueHandling = NullValueHandling.Ignore,
 	};
 
-	protected readonly HttpClient client;
+	private readonly HttpClient client;
 
 	/// <summary>
 	/// Trello Api helper.
@@ -33,18 +33,18 @@ internal class TrelloApi : IDisposable
 		client = new();
 	}
 
-	public string BaseUrlCore { get; }
-	public string BoardBaseUrl { get; }
+	private string BaseUrlCore { get; }
+	private string BoardBaseUrl { get; }
 
-	public string Key { get; }
+	private string Key { get; }
 
-	public string Token { get; }
+	private string Token { get; }
 
-	public string Include { get; }
+	private string Include { get; }
 
 	public void Dispose()
 	{
-		client?.Dispose();
+		client.Dispose();
 	}
 
 	/// <summary>

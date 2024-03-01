@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.Trello;
 
-public class Action
+public sealed class Action
 {
 	public string Id { get; set; }
 

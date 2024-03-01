@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.GitLab;
 
-public class GitLabOptions
+public sealed class GitLabOptions
 {
 	/// <summary>
 	/// GitLab server URL.

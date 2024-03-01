@@ -27,7 +27,7 @@ internal static class GitLabApiDebugExtensions
 	/// </summary>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	internal static async Task<IReadOnlyList<Issue>> GetAllIssues(this GitLabApi api)
+	private static async Task<IReadOnlyList<Issue>> GetAllIssues(this GitLabApi api)
 	{
 		const int limit = 100;
 		var issues = new List<Issue>();

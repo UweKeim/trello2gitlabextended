@@ -1,6 +1,6 @@
 ﻿namespace Trello2GitLab.Conversion.Trello;
 
-public class TrelloOptions
+public sealed class TrelloOptions
 {
 	/// <summary>
 	/// Trello API Key.

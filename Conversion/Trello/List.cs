@@ -2,7 +2,7 @@
 
 namespace Trello2GitLab.Conversion.Trello;
 
-public class List
+public sealed class List
 {
 	public string Id { get; set; }
 

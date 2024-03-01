@@ -3,7 +3,7 @@
 /// <summary>
 /// https://docs.gitlab.com/ee/api/issues.html#edit-issue
 /// </summary>
-public class EditIssueDescription
+public sealed class EditIssueDescription
 {
-	public string Description { get; set; }
+	public string? Description { get; set; }
 }

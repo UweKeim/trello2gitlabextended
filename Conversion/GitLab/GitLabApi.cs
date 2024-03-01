@@ -7,7 +7,7 @@ namespace Trello2GitLab.Conversion.GitLab;
 /// </summary>
 internal class GitLabApi : IDisposable
 {
-	protected static readonly JsonSerializerSettings jsonSettings = new()
+	private static readonly JsonSerializerSettings jsonSettings = new()
 	{
 		ContractResolver = new DefaultContractResolver()
 		{
@@ -17,7 +17,7 @@ internal class GitLabApi : IDisposable
 		NullValueHandling = NullValueHandling.Ignore,
 	};
 
-	protected readonly HttpClient client;
+	private readonly HttpClient client;
 
 	/// <summary>
 	/// GitLab Api helper.
@@ -34,17 +34,14 @@ internal class GitLabApi : IDisposable
 		client.DefaultRequestHeaders.Add("PRIVATE-TOKEN", Token);
 	}
 
-	public string BaseUrl { get; }
-
-	public string ProjectUrl { get; }
-
-	public string Token { get; }
-
+	private string BaseUrl { get; }
+	private string ProjectUrl { get; }
+	private string Token { get; }
 	public bool Sudo { get; }
 
 	public void Dispose()
 	{
-		client?.Dispose();
+		client.Dispose();
 	}
 
 	/// <summary>
@@ -59,7 +56,7 @@ internal class GitLabApi : IDisposable
 	/// Edits an user.
 	/// </summary>
 	/// <param name="user">The user to edit</param>
-	public async Task<User> EditUser(EditUser user)
+	public async Task<User?> EditUser(EditUser user)
 	{
 		return await Request<User>(HttpMethod.Put, $"/users/{user.Id}", null, user, projectBasedUrl: false);
 	}
@@ -71,6 +68,15 @@ internal class GitLabApi : IDisposable
 	{
 		return await RequestPaged<Milestone>(HttpMethod.Get, "/milestones", projectBasedUrl: true);
 	}
+
+	/// <summary>
+	/// Gets all project's Issues.
+	/// </summary>
+	public async Task<IReadOnlyList<Issue>> GetAllIssues()
+	{
+		return await RequestPaged<Issue>(HttpMethod.Get, "/issues", projectBasedUrl: true);
+	}
+
 	/// <summary>
 	/// Creates an issue in the target GitLab server.
 	/// </summary>
@@ -78,7 +84,7 @@ internal class GitLabApi : IDisposable
 	/// <param name="createdBy">ID of the user creating the issue.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	public async Task<Issue> CreateIssue(NewIssue newIssue, int? createdBy = null)
+	public async Task<Issue?> CreateIssue(NewIssue newIssue, int? createdBy = null)
 	{
 		return await Request<Issue>(HttpMethod.Post, "/issues", createdBy, newIssue);
 	}
@@ -86,21 +92,18 @@ internal class GitLabApi : IDisposable
 	/// <summary>
 	/// Uploads a file to the target GitLab server.
 	/// </summary>
-	/// <param name="projectId">ID of the project to upload to.</param>
-	/// <param name="filePath">Full path to the local file to upload.</param>
-	/// <returns></returns>
 	/// <remarks>
 	/// https://docs.gitlab.com/ee/api/projects.html#upload-a-file
 	/// </remarks>
-	public async Task<Upload> UploadFile(string filePath, string? mimeType = null)
+	public async Task<Upload?> UploadFile(string filePath, string? mimeType = null)
 	{
 		using var content = new MultipartFormDataContent();
-		using var fileContent = new ByteArrayContent(await System.IO.File.ReadAllBytesAsync(filePath));
+		using var fileContent = new ByteArrayContent(await File.ReadAllBytesAsync(filePath));
 
 		fileContent.Headers.ContentType = new(string.IsNullOrEmpty(mimeType)
 			? MimeMapping.MimeUtility.GetMimeMapping(filePath)
 			: mimeType);
-		content.Add(fileContent, @"file", System.IO.Path.GetFileName(filePath));
+		content.Add(fileContent, @"file", Path.GetFileName(filePath));
 
 		return await Request<Upload>(HttpMethod.Post, $"/uploads", null, content);
 	}
@@ -112,14 +115,23 @@ internal class GitLabApi : IDisposable
 	/// <param name="editedBy">ID of the user editing the issue.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	public async Task<Issue> EditIssue(EditIssue editIssue, int? editedBy = null)
+	public async Task<Issue?> EditIssue(EditIssue editIssue, int? editedBy = null)
 	{
 		return await Request<Issue>(HttpMethod.Put, $"/issues/{editIssue.IssueIid}", editedBy, editIssue);
 	}
 
-	public async Task<Issue> EditIssueDescription(int issueIid, EditIssueDescription editIssueDescription, int? editedBy = null)
+	public async Task<Issue?> EditIssueDescription(int issueIid, EditIssueDescription editIssueDescription,
+		int? editedBy = null)
 	{
 		return await Request<Issue>(HttpMethod.Put, $"/issues/{issueIid}", editedBy, editIssueDescription);
+	}
+
+	/// <summary>
+	/// Gets all project's Issues.
+	/// </summary>
+	public async Task<IReadOnlyList<IssueNote>> GetAllIssueNotes(int issueIid)
+	{
+		return await RequestPaged<IssueNote>(HttpMethod.Get, $"/issues/{issueIid}/notes", projectBasedUrl: true);
 	}
 
 	/// <summary>
@@ -130,9 +142,24 @@ internal class GitLabApi : IDisposable
 	/// <param name="commentedBy">ID of the user commenting the issue.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	public async Task<IssueNote> CommentIssue(Issue issue, NewIssueNote comment, int? commentedBy = null)
+	public async Task<IssueNote?> CommentIssue(Issue issue, NewIssueNote comment, int? commentedBy = null)
 	{
 		return await Request<IssueNote>(HttpMethod.Post, $"/issues/{issue.Iid}/notes", commentedBy, comment);
+	}
+
+	/// <summary>
+	/// Edits a comment on an issue.
+	/// </summary>
+	/// <param name="issue">The issue object to comment.</param>
+	/// <param name="comment">The comment object to add.</param>
+	/// <param name="noteId"></param>
+	/// <param name="commentedBy">ID of the user commenting the issue.</param>
+	/// <exception cref="ApiException"></exception>
+	/// <exception cref="HttpRequestException"></exception>
+	public async Task<IssueNote?> ModifyIssueNote(Issue issue, int noteId, ModifyIssueNote comment,
+		int? commentedBy = null)
+	{
+		return await Request<IssueNote>(HttpMethod.Put, $"/issues/{issue.Iid}/notes/{noteId}", commentedBy, comment);
 	}
 
 	/// <summary>
@@ -140,7 +167,7 @@ internal class GitLabApi : IDisposable
 	/// </summary>
 	/// <param name="endpoint">Target endpoint (starting with `/`).</param>
 	/// <param name="projectBasedUrl">Tells if the API URL targets the project.</param>
-	protected string Url(string endpoint, bool projectBasedUrl)
+	private string Url(string endpoint, bool projectBasedUrl)
 	{
 		return (projectBasedUrl ? ProjectUrl : BaseUrl) + endpoint;
 	}
@@ -156,7 +183,8 @@ internal class GitLabApi : IDisposable
 	/// <param name="projectBasedUrl">Tells if the API URL targets the project.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	internal async Task<IReadOnlyList<T>> RequestPaged<T>(HttpMethod method, string endpoint, int? userId = null, HttpContent content = null, bool projectBasedUrl = true)
+	private async Task<IReadOnlyList<T>> RequestPaged<T>(HttpMethod method, string endpoint, int? userId = null,
+		HttpContent? content = null, bool projectBasedUrl = true)
 	{
 		const int limit = 100;
 		var page = 1;
@@ -164,14 +192,15 @@ internal class GitLabApi : IDisposable
 
 		var separator = endpoint.Contains('?') ? '&' : '?';
 
-		IReadOnlyList<T> apiResponseItems;
+		IReadOnlyList<T>? apiResponseItems;
 		do
 		{
-			apiResponseItems = await Request<IReadOnlyList<T>>(method, $"{endpoint}{separator}per_page={limit}&page={page}", userId, content, projectBasedUrl);
+			apiResponseItems = await Request<IReadOnlyList<T>>(method,
+				$"{endpoint}{separator}per_page={limit}&page={page}", userId, content, projectBasedUrl);
 
-			items.AddRange(apiResponseItems);
+			if (apiResponseItems != null) items.AddRange(apiResponseItems);
 			page++;
-		} while (apiResponseItems.Count == limit);
+		} while (apiResponseItems is { Count: limit });
 
 		return items;
 	}
@@ -186,7 +215,8 @@ internal class GitLabApi : IDisposable
 	/// <param name="serializableContent">Serializable content to send.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	internal async Task<T> Request<T>(HttpMethod method, string endpoint, int? userId, object serializableContent, bool projectBasedUrl = true)
+	private async Task<T?> Request<T>(HttpMethod method, string endpoint, int? userId, object serializableContent,
+		bool projectBasedUrl = true)
 	{
 		var serializedContent = JsonConvert.SerializeObject(serializableContent, jsonSettings);
 
@@ -205,7 +235,8 @@ internal class GitLabApi : IDisposable
 	/// <param name="projectBasedUrl">Tells if the API URL targets the project.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	internal async Task<T> Request<T>(HttpMethod method, string endpoint, int? userId = null, HttpContent content = null, bool projectBasedUrl = true)
+	internal async Task<T?> Request<T>(HttpMethod method, string endpoint, int? userId = null,
+		HttpContent? content = null, bool projectBasedUrl = true)
 	{
 		using var request = new HttpRequestMessage(method, Url(endpoint, projectBasedUrl));
 		if (Sudo && userId != null)

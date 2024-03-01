@@ -3,7 +3,7 @@
 /// <summary>
 /// https://docs.gitlab.com/ee/api/milestones.html
 /// </summary>
-public class Milestone
+public sealed class Milestone
 {
 	public int Id { get; set; }
 
