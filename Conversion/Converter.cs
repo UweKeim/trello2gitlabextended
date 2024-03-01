@@ -123,6 +123,8 @@ public sealed class Converter : IDisposable
 
 		// --
 
+		var adjustCount = 0;
+
 		var issues = await gitlab.GetAllIssues();
 
 		var totalIssues = issues.Count;
@@ -190,6 +192,7 @@ public sealed class Converter : IDisposable
 			if (any)
 			{
 				progress.Report(new($"    => Adjusted mentions."));
+				adjustCount++;
 			}
 		}
 
@@ -207,7 +210,7 @@ public sealed class Converter : IDisposable
 
 		// --
 
-		progress.Report(new("Finished adjusting mentions."));
+		progress.Report(new($"Finished adjusting {adjustCount} mentions."));
 		return true;
 	}
 
