@@ -3,7 +3,6 @@ using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -136,8 +135,10 @@ namespace Trello2GitLab.Conversion.Trello
 		/// </summary>
 		public async Task<byte[]> DownloadAttachment(string attachmentUrl)
 		{
-			var url = $"{attachmentUrl}?key={Key}&token={Token}";
-			using var response = await client.GetAsync(url);
+			// Setzen des Authorization-Headers
+			client.DefaultRequestHeaders.Authorization = new("OAuth", $"oauth_consumer_key=\"{Key}\", oauth_token=\"{Token}\"");
+
+			using var response = await client.GetAsync(attachmentUrl);
 
 			var bytes = await response.Content.ReadAsByteArrayAsync();
 

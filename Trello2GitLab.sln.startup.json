@@ -69,6 +69,24 @@
           "StartProject": true
         }
       }
+    },
+    "Test-Board-UweKeim (Import)": {
+      "Projects": {
+        "ConsoleApp": {
+          "CommandLineArguments": "E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-Testprojekt.json\"\"",
+          "WorkingDirectory": "",
+          "StartProject": true
+        }
+      }
+    },
+    "Test-Board-UweKeim (LÖSCHEN)": {
+      "Projects": {
+        "ConsoleApp": {
+          "CommandLineArguments": "E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-Testprojekt.json\"\" --delete 0",
+          "WorkingDirectory": "",
+          "StartProject": true
+        }
+      }
     }
   }
 }
