@@ -1,45 +1,42 @@
-﻿using System.Collections.Generic;
+﻿namespace Trello2GitLab.Conversion;
 
-namespace Trello2GitLab.Conversion
+public enum ConversionStep
 {
-    public enum ConversionStep
-    {
-        Init,
+	Init,
 
-        FetchingTrelloBoard,
-        TrelloBoardFetched,
+	FetchingTrelloBoard,
+	TrelloBoardFetched,
 
-        GrantAdminPrivileges,
-        AdminPrivilegesGranted,
+	GrantAdminPrivileges,
+	AdminPrivilegesGranted,
 
-        FetchMilestones,
-        MilestonesFetched,
+	FetchMilestones,
+	MilestonesFetched,
 
-        ConvertingCards,
-        CardsConverted,
+	ConvertingCards,
+	CardsConverted,
 
-        RevokeAdminPrivileges,
-        AdminPrivilegesRevoked,
+	RevokeAdminPrivileges,
+	AdminPrivilegesRevoked,
 
-        Finished,
-    }
+	Finished,
+}
 
-    public class ConversionProgressReport
-    {
-        public ConversionStep CurrentStep { get; }
+public class ConversionProgressReport
+{
+	public ConversionStep CurrentStep { get; }
 
-        public int CurrentIndex { get; }
+	public int CurrentIndex { get; }
 
-        public int? TotalElements { get; }
+	public int? TotalElements { get; }
 
-        public IEnumerable<string> Errors { get; }
+	public IEnumerable<string> Errors { get; }
 
-        internal ConversionProgressReport(ConversionStep step, int current = 0, int? total = null, IEnumerable<string> errors = null)
-        {
-            CurrentStep = step;
-            CurrentIndex = current;
-            TotalElements = total;
-            Errors = errors;
-        }
-    }
+	internal ConversionProgressReport(ConversionStep step, int current = 0, int? total = null, IEnumerable<string> errors = null)
+	{
+		CurrentStep = step;
+		CurrentIndex = current;
+		TotalElements = total;
+		Errors = errors;
+	}
 }

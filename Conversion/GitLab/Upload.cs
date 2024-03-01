@@ -1,7 +1,5 @@
 ﻿namespace Trello2GitLab.Conversion.GitLab;
 
-using Newtonsoft.Json;
-
 public class Upload
 {
 	[JsonProperty("alt")]

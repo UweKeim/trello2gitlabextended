@@ -1,151 +1,139 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.IO;
-using System.Threading.Tasks;
-using Trello2GitLab.Conversion;
+﻿namespace Trello2GitLab.ConsoleApp;
 
-namespace Trello2GitLab.ConsoleApp
+using Conversion;
+
+internal enum ExitCode
 {
-	using System.ComponentModel.DataAnnotations;
+	InvalidArguments = -1,
+	Success = 0,
+	OptionsError = 1,
+	ConversionError = 2,
+}
 
-	internal enum ExitCode
-    {
-        InvalidArguments = -1,
-        Success = 0,
-        OptionsError = 1,
-        ConversionError = 2,
-    }
+public static class Program
+{
+	private static async Task<int> Main(string[] args)
+	{
+		if (args.Length == 0 || args[0] == "-h" || args[0] == "--help")
+		{
+			ShowHelp();
+			return (int)ExitCode.Success;
+		}
+		else if (args.Length == 1)
+		{
+			return (int)await RunConversion(args[0]);
+		}
+		else if(args.Length >= 2 && (args[1] == "--delete"))
+		{
+			var idGreaterThan = 0;
+			if (args.Length > 2)
+			{
+				idGreaterThan = int.Parse(args[2]);
+			}
 
-    public static class Program
-    {
-        private static async Task<int> Main(string[] args)
-        {
-            if (args.Length == 0 || args[0] == "-h" || args[0] == "--help")
-            {
-                ShowHelp();
-                return (int)ExitCode.Success;
-            }
-            else if (args.Length == 1)
-            {
-                return (int)await RunConversion(args[0]);
-            }
-#if DEBUG
-            else if(args.Length >= 2 && (args[1] == "--delete"))
-            {
-	            var idGreaterThan = 0;
-	            if (args.Length > 2)
-	            {
-		            idGreaterThan = int.Parse(args[2]);
-				}
+			return (int)await RunDeletion(args[0], idGreaterThan);
+		}
+		else
+		{
+			await Console.Error.WriteAsync("Invalid arguments supplied.\nUse -h option to see help.");
+			return (int)ExitCode.InvalidArguments;
+		}
+	}
 
-                return (int)await RunDeletion(args[0], idGreaterThan);
-            }
-#endif
-            else
-            {
-                Console.Error.Write("Invalid arguments supplied.\nUse -h option to see help.");
-                return (int)ExitCode.InvalidArguments;
-            }
-        }
+	private static void ShowHelp()
+	{
+		Console.Write(
+			"""
+				trello2gitlab
+				Convert Trello cards to GitLab issues.
 
-        private static void ShowHelp()
-        {
-            Console.Write(@"
-trello2gitlab
-Convert Trello cards to GitLab issues.
+				Usage:
+				  trello2gitlab path/to/options.json
+				  trello2gitlab [-h|--help]
 
-Usage:
-  trello2gitlab path/to/options.json
-  trello2gitlab [-h|--help]
+				Options:
+				  -h|--help    Show this screen.
 
-Options:
-  -h|--help    Show this screen.
+				Options file format:
+				  {
+				      "trello": {
+				          "key": <Trello API key (string)>,
+				          "token": <Trello API token (string)>,
+				          "boardId": <Trello board ID (string)>,
+				          "include": <Specifies which cards to include ("all"|"open"|"visible"|"closed") [default: "all"]>
+				      },
+				      "gitlab": {
+				          "url": <GitLab server base URL (string) [default: "https://gitlab.com"]>,
+				          "token": <GitLab private access token (string)>,
+				          "sudo": <Tells if the private token has sudo rights (bool)>,
+				          "projectId": <GitLab target project ID (int)>
+				      },
+				      "associations": {
+				          "labels_labels": {
+				              <Trello label ID (string)>: <GitLab label name (string)>
+				          },
+				          "lists_labels": {
+				              <Trello list ID (string)>: <GitLab label name (string)>
+				          },
+				          "labels_milestones": {
+				              <Trello label ID (string)>: <GitLab milestone ID (int)>
+				          },
+				          "lists_milestones": {
+				              <Trello list ID (string)>: <GitLab milestone ID (int)>
+				          },
+				          "members_users": {
+				              <Trello member ID (string)>: <GitLab user ID (int)>
+				          }
+				      }
+				  }
+				""".Trim());
+	}
 
-Options file format:
-  {
-      ""trello"": {
-          ""key"": <Trello API key (string)>,
-          ""token"": <Trello API token (string)>,
-          ""boardId"": <Trello board ID (string)>,
-          ""include"": <Specifies which cards to include (""all""|""open""|""visible""|""closed"") [default: ""all""]>
-      },
-      ""gitlab"": {
-          ""url"": <GitLab server base URL (string) [default: ""https://gitlab.com""]>,
-          ""token"": <GitLab private access token (string)>,
-          ""sudo"": <Tells if the private token has sudo rights (bool)>,
-          ""projectId"": <GitLab target project ID (int)>
-      },
-      ""associations"": {
-          ""labels_labels"": {
-              <Trello label ID (string)>: <GitLab label name (string)>
-          },
-          ""lists_labels"": {
-              <Trello list ID (string)>: <GitLab label name (string)>
-          },
-          ""labels_milestones"": {
-              <Trello label ID (string)>: <GitLab milestone ID (int)>
-          },
-          ""lists_milestones"": {
-              <Trello list ID (string)>: <GitLab milestone ID (int)>
-          },
-          ""members_users"": {
-              <Trello member ID (string)>: <GitLab user ID (int)>
-          }
-      }
-  }
-            ".Trim());
-        }
+	private static async Task<ExitCode> RunConversion(string optionsFilePath)
+	{
+		if (!TryGetConverterOptions(optionsFilePath, out var options))
+		{
+			await Console.Error.WriteLineAsync($"The options file cannot be located at: {optionsFilePath}");
+			return ExitCode.OptionsError;
+		}
 
-        private static async Task<ExitCode> RunConversion(string optionsFilePath)
-        {
-            if (!TryGetConverterOptions(optionsFilePath, out ConverterOptions options))
-            {
-                Console.Error.WriteLine($"The options file cannot be located at: {optionsFilePath}");
-                return ExitCode.OptionsError;
-            }
+		using var converter = new Converter(options);
+		var success = await converter.ConvertAll(new ConversionProgress());
 
-            using (var converter = new Converter(options))
-            {
-                bool success = await converter.ConvertAll(new ConversionProgress());
+		return success ? ExitCode.Success : ExitCode.ConversionError;
+	}
 
-                return success ? ExitCode.Success : ExitCode.ConversionError;
-            }
-        }
+	private static async Task<ExitCode> RunDeletion(string optionsFilePath, int idGreaterThan)
+	{
+		if (!TryGetConverterOptions(optionsFilePath, out var options))
+		{
+			await Console.Error.WriteLineAsync($"The options file cannot be located at: {optionsFilePath}");
+			return ExitCode.OptionsError;
+		}
 
-#if DEBUG
-        private static async Task<ExitCode> RunDeletion(string optionsFilePath, int idGreaterThan)
-        {
-            if (!TryGetConverterOptions(optionsFilePath, out ConverterOptions options))
-            {
-                Console.Error.WriteLine($"The options file cannot be located at: {optionsFilePath}");
-                return ExitCode.OptionsError;
-            }
+		Console.WriteLine($"Deleting issues with ID greater than {idGreaterThan}...");
 
-            Console.WriteLine($"Deleting issues with ID greater than {idGreaterThan}...");
+		using (var converter = new Converter(options))
+		{
+			await converter.DeleteAllIssues(idGreaterThan);
+		}
 
-            using (var converter = new Converter(options))
-            {
-                await converter.DeleteAllIssues(idGreaterThan);
-            }
+		Console.WriteLine("Issues deleted.");
 
-            Console.WriteLine("Issues deleted.");
+		return ExitCode.Success;
+	}
 
-            return ExitCode.Success;
-        }
-#endif
+	private static bool TryGetConverterOptions(string optionsFilePath, out ConverterOptions options)
+	{
+		options = null;
 
-        private static bool TryGetConverterOptions(string optionsFilePath, out ConverterOptions options)
-        {
-            options = null;
+		if (!File.Exists(optionsFilePath))
+			return false;
 
-            if (!File.Exists(optionsFilePath))
-                return false;
+		var optionsData = File.ReadAllText(optionsFilePath);
 
-            var optionsData = File.ReadAllText(optionsFilePath);
+		options = JsonConvert.DeserializeObject<ConverterOptions>(optionsData);
 
-            options = JsonConvert.DeserializeObject<ConverterOptions>(optionsData);
-
-            return true;
-        }
-    }
+		return true;
+	}
 }

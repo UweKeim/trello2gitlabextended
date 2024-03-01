@@ -1,15 +1,14 @@
 ﻿
-namespace Trello2GitLab.Conversion.GitLab
+namespace Trello2GitLab.Conversion.GitLab;
+
+/// <summary>
+///https://docs.gitlab.com/ee/api/users.html
+/// </summary>
+public class User
 {
-	/// <summary>
-    ///https://docs.gitlab.com/ee/api/users.html
-    /// </summary>
-    public class User
-    {
-        public int Id { get; set; }
+	public int Id { get; set; }
 
-        public string Username { get; set; }
+	public string Username { get; set; }
 
-        public bool IsAdmin { get; set; }
-    }
+	public bool IsAdmin { get; set; }
 }

@@ -1,8 +1,5 @@
 ﻿namespace Trello2GitLab.Conversion.Trello;
 
-using System;
-using System.Collections.Generic;
-
 public class Attachment
 {
 	public string Id { get; set; }
