@@ -1,6 +1,6 @@
 # trello2gitlabextended
 
-This is a (manual) fork from https://github.com/TristanPct/trello2gitlab
+This is a (manual) fork from https://github.com/TristanPct/trello2gitlab with added support for attachments/uploads.
 
 *Convert Trello cards to GitLab issues.*
 
