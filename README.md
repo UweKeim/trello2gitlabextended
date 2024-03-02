@@ -59,7 +59,7 @@ Create a JSON file with all the needed information:
 ---------------------------------|----------------
 `global`                         | Global settings.
 `global.action`                  | Action to perform. [default: `"All"`]<br />`"All"` - Perform a full import from Trello to GitLab. <br />`"AdjustMentions"` - Only adjust mentions in GitLab. <br />`"DeleteIssues"` - Only delete issues in GitLab.
-`global.deleteIfGreaterThanIssueId`| If action is "DeleteIssues", delete all mentions if the issue ID is greater than this value.
+`global.deleteIfGreaterThanIssueId`| If action is "DeleteIssues", delete all mentions that have an issue ID that is greater (but not equal) than this value.
 `trello`                         | Trello specific settings.
 `trello.key`                     | Trello API Key.
 `trello.token`                   | Trello API Token. This is _not_ the secret API key, but the token that you generate through the "Token" link on `https://trello.com/power-ups/<PowerUpUniqueId>/edit/api-key`.
