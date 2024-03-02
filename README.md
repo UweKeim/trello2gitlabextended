@@ -1,8 +1,12 @@
-# trello2gitlabextended
-
-This is a (manual) fork from https://github.com/TristanPct/trello2gitlab with added support for attachments/uploads.
+﻿# trello2gitlabextended
 
 *Convert Trello cards to GitLab issues.*
+
+## Notes about this fork
+
+[This repository](https://github.com/UweKeim/trello2gitlabextended) is a (manual) fork by [Uwe Keim](https://github.com/UweKeim) of [TristanPct's "trello2gitlab" repository](https://github.com/TristanPct/trello2gitlab) with added support for **attachments/uploads** and adjusting **user mentions** in issues and comments. 
+
+I did a manual fork, because the "lfs" things inside the [.gitattributes](https://github.com/TristanPct/trello2gitlab/blob/master/.gitattributes) of the original repository generated errors during cloning on my local machine, this preventing the clone.
 
 ## Features
 
@@ -52,10 +56,13 @@ Create the token with `api` and (if possible) `sudo` scopes.
 Create a JSON file with all the needed information: 
 
  Key                             | Description
----------------------------------|---
+---------------------------------|----------------
+`global`                         | Global settings.
+`global.action`                  | Action to perform on mentions. [default: `"All"`]<br />`"All"` - Perform a full import from Trello to GitLab. <br />`"AdjustMentions"` - Only adjust mentions. <br />`"DeleteIssues"` - Only delete issues.
+`global.deleteIfGreaterThanIssueId`| If action is "DeleteIssues", delete all mentions if the issue ID is greater than this value.
 `trello`                         | Trello specific settings.
 `trello.key`                     | Trello API Key.
-`trello.token`                   | Trello API Token.
+`trello.token`                   | Trello API Token. This is _not_ the secret API key, but the token that you generate through the "Token" link on `https://trello.com/power-ups/<PowerUpUniqueId>/edit/api-key`.
 `trello.boardId`                 | Trello board ID.
 `trello.include`                 | Specifies which cards to include. [default: `"all"`]<br />`"all"`<br />`"open"` Includes cards that are open in lists that have been archived.<br />`"visible"` Only includes cards in lists that are not closed.<br />`"closed"`
 `gitlab`                         | GitLab specific settings.
@@ -69,11 +76,18 @@ Create a JSON file with all the needed information:
 `associations.labels_milestones` | Maps Trello label ID (`string`) with GitLab milestone ID (`number`).
 `associations.lists_milestones`  | Maps Trello list ID (`string`) with GitLab milestone ID (`number`).
 `associations.members_users`     | Maps Trello member ID (`string`) with GitLab user ID (`number`).
+`associations.mentions`          | Maps Trello username (`string`) with GitLab username (`string`).
+
+The best way to get the Trello IDs is to export the Trello board to JSON and look for the IDs in the JSON file. Use e.g. Visual Studio Code to prettify the JSON (shortcut <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>) and search for the IDs.
 
 #### Example
 
 ```json
 {
+    "global": {
+        "action": "All", 
+        "deleteIfGreaterThanIssueId": 11
+    },
     "trello": {
         "key": "AbC123CdE456",
         "token": "C1E42Ab3Cd56",
@@ -106,6 +120,11 @@ Create a JSON file with all the needed information:
             "5d42855a0eb4d82ebf324365": 7,
             "58f8b57a294543b89ee319bd": 2,
             "5b438503db2fe7404f32dfef": 8
+        },
+        "mentions": {
+            "TrelloUserName1": "GitLabUserName1",
+            "TrelloUserName2": "GitLabUserName2",
+            "TrelloUserName3": "GitLabUserName3"
         }
     }
 }
@@ -119,3 +138,8 @@ Built versions are in the `publish/` folder.
 trello2gitlab path/to/options.json
 ```
 
+You can also specify `--delete` or `--adjustmentions` as the second argument to only delete issues or adjust mentions. 
+
+If `--delete` is specified, you can also specify a third argument to delete all mentions with an issue ID greater than the specified value.
+
+The action specified in the command line overrides the action specified in the options file.
