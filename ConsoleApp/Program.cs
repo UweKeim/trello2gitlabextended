@@ -31,17 +31,19 @@ public static class Program
             // Auch per Befehlszeile konfigurierbar.
             switch (args)
             {
-                case [_, "--delete", ..]:
-                {
-                    options.Global.Action = ConverterAction.DeleteIssues;
-                    if (args.Length > 2)
-                    {
-                        options.Global.DeleteIfGreaterThanIssueId = int.Parse(args[2]);
-                    }
+	            case [_, "--import"]:
+	            case [_, "--all"]:
+		            options.Global.Action = ConverterAction.All;
+		            break;
 
-                    break;
-                }
-                case [_, "--adjustmentions"]:
+	            case [_, "--delete", ..]:
+	            {
+		            options.Global.Action = ConverterAction.DeleteIssues;
+		            if (args.Length > 2) options.Global.DeleteIfGreaterThanIssueId = int.Parse(args[2]);
+		            break;
+	            }
+
+	            case [_, "--adjustmentions"]:
                     options.Global.Action = ConverterAction.AdjustMentions;
                     break;
             }
@@ -51,10 +53,13 @@ public static class Program
             {
                 case ConverterAction.All:
                     return (int)await RunConversion(options);
+
                 case ConverterAction.AdjustMentions:
                     return (int)await RunAdjustMentions(options);
+
                 case ConverterAction.DeleteIssues:
                     return (int)await RunDeletion(options);
+
                 default:
                     await Console.Error.WriteAsync("Invalid arguments supplied.\nUse -h option to see help.");
                     return (int)ExitCode.InvalidArguments;
