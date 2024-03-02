@@ -9,12 +9,11 @@ public sealed class Converter : IDisposable
 	private const int TITLE_MAX_LENGTH = 255;
 	private const int DESCRIPTION_MAX_LENGTH = 1048576;
 
-	private readonly ConverterOptions _options;
 	private readonly TrelloApi trello;
 	private readonly GitLabApi gitlab;
 	private readonly AssociationsOptions associations;
 	private bool isDisposed;
-	private Board trelloBoard;
+	private Board? trelloBoard;
 
 	/// <summary>
 	/// Creates a new converter using the options provided.
@@ -23,7 +22,6 @@ public sealed class Converter : IDisposable
 	/// <exception cref="ArgumentNullException"></exception>
 	public Converter(ConverterOptions options)
 	{
-		_options = options;
 		CheckOptions(options);
 
 		trello = new(options.Trello);
@@ -338,6 +336,7 @@ public sealed class Converter : IDisposable
 	/// <summary>
 	/// Sets GitLab users admin privileges.
 	/// </summary>
+	/// <param name="users"></param>
 	/// <param name="admin">User is admin.</param>
 	/// <param name="progress">A progress update provider.</param>
 	/// <param name="step">The step doing this action.</param>

@@ -4,7 +4,7 @@
 
 ## Notes about this fork
 
-[This repository](https://github.com/UweKeim/trello2gitlabextended) is a (manual) fork by [Uwe Keim](https://github.com/UweKeim) of [TristanPct's "trello2gitlab" repository](https://github.com/TristanPct/trello2gitlab) with added support for **attachments/uploads** and adjusting **user mentions** in issues and comments. 
+[This repository](https://github.com/UweKeim/trello2gitlabextended) is a (manual) fork by [Uwe Keim](https://github.com/UweKeim) of [TristanPct's "trello2gitlab" GitHub repository](https://github.com/TristanPct/trello2gitlab) (also see the [original GitLab repository](https://gitlab.com/tristanpct/trello2gitlab/)) with added support for **attachments/uploads** and adjusting **user mentions** in issues and comments. 
 
 I did a manual fork, because the "lfs" things inside the [.gitattributes](https://github.com/TristanPct/trello2gitlab/blob/master/.gitattributes) of the original repository generated errors during cloning on my local machine, this preventing the clone.
 

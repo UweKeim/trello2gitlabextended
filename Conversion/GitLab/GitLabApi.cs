@@ -213,6 +213,7 @@ internal class GitLabApi : IDisposable
 	/// <param name="endpoint">Target endpoint (starting with `/`).</param>
 	/// <param name="userId">User to impersonate (if sudo).</param>
 	/// <param name="serializableContent">Serializable content to send.</param>
+	/// <param name="projectBasedUrl"></param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
 	private async Task<T?> Request<T>(HttpMethod method, string endpoint, int? userId, object serializableContent,

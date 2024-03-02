@@ -52,7 +52,7 @@ internal class TrelloApi : IDisposable
 	/// </summary>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	public async Task<Board> GetBoard()
+	public async Task<Board?> GetBoard()
 	{
 		var board = await GetBasicBoardData();
 
@@ -88,7 +88,7 @@ internal class TrelloApi : IDisposable
 	/// </summary>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	protected async Task<Board> GetBasicBoardData()
+	protected async Task<Board?> GetBasicBoardData()
 	{
 		return await Request<Board>($"{BaseUrlCore}/{BoardBaseUrl}", $"fields=none&cards={Include}&checklists=all&lists=all");
 	}
