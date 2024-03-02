@@ -58,7 +58,7 @@ Create a JSON file with all the needed information:
  Key                             | Description
 ---------------------------------|----------------
 `global`                         | Global settings.
-`global.action`                  | Action to perform on mentions. [default: `"All"`]<br />`"All"` - Perform a full import from Trello to GitLab. <br />`"AdjustMentions"` - Only adjust mentions. <br />`"DeleteIssues"` - Only delete issues.
+`global.action`                  | Action to perform. [default: `"All"`]<br />`"All"` - Perform a full import from Trello to GitLab. <br />`"AdjustMentions"` - Only adjust mentions in GitLab. <br />`"DeleteIssues"` - Only delete issues in GitLab.
 `global.deleteIfGreaterThanIssueId`| If action is "DeleteIssues", delete all mentions if the issue ID is greater than this value.
 `trello`                         | Trello specific settings.
 `trello.key`                     | Trello API Key.
