@@ -58,7 +58,7 @@ Create a JSON file with all the needed information:
  Key                             | Description
 ---------------------------------|----------------
 `global`                         | Global settings.
-`global.action`                  | Action to perform. [default: `"All"`]<br />`"All"` - Perform a full import from Trello to GitLab. <br />`"AdjustMentions"` - Only adjust mentions in GitLab. <br />`"DeleteIssues"` - Only delete issues in GitLab.
+`global.action`                  | Action to perform. [default: `"All"`]<br />`"All"` – Perform a full import from Trello to GitLab. <br />`"AdjustMentions"` – Only adjust mentions in GitLab. <br />`"DeleteIssues"` – Only delete issues in GitLab.
 `global.deleteIfGreaterThanIssueId`| If action is "DeleteIssues", delete all mentions that have an issue ID that is greater than (but not equal to) this value.
 `trello`                         | Trello specific settings.
 `trello.key`                     | Trello API Key.
@@ -138,7 +138,11 @@ Built versions are in the `publish/` folder.
 trello2gitlab path/to/options.json
 ```
 
-You can also specify `--delete` or `--adjustmentions` as the second argument to only delete issues or adjust mentions. 
+You can also specify one of the following command line arguments as the second argument to only execute a certain action:
+
+- `--all` or `-import` – Perform a full import from Trello to GitLab including the adjustment of mentions.
+- `--delete` – Delete all issues in GitLab.
+- `--adjustmentions` – Adjusts mentions in GitLab (i.e. rename "@trellolabusername" to "@gitlabusername"). 
 
 If `--delete` is specified, you can also specify a third argument to delete all mentions with an issue ID greater than the specified value.
 
