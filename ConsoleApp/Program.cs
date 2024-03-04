@@ -51,7 +51,8 @@ public static class Program
                     options.Global.Action = ConverterAction.MoveCustomFields;
                     break;
 
-	            case [_, "--associtate"]:
+	            case [_, "--associate"]:
+	            case [_, "--associtatewithtrello"]:
                     options.Global.Action = ConverterAction.AssocitateWithTrello;
                     break;
             }
@@ -98,7 +99,7 @@ public static class Program
                 Options file format:
                   {
                       "global": {
-                          "action": "<Action (string) to perform on mentions ("All", "AdjustMentions", "DeleteIssues", "MoveCustomFields") [default: "All"]>", 
+                          "action": "<Action (string) to perform on mentions ("All", "AdjustMentions", "DeleteIssues", "MoveCustomFields", "AssocitateWithTrello") [default: "All"]>", 
                           "deleteIfGreaterThanIssueId": <Issue ID (int) [default: 0]>
                       },
                       "trello": {
