@@ -46,6 +46,14 @@ public static class Program
 	            case [_, "--adjustmentions"]:
                     options.Global.Action = ConverterAction.AdjustMentions;
                     break;
+
+	            case [_, "--movecustomfields"]:
+                    options.Global.Action = ConverterAction.MoveCustomFields;
+                    break;
+
+	            case [_, "--associtate"]:
+                    options.Global.Action = ConverterAction.AssocitateWithTrello;
+                    break;
             }
 
             // Execute the desired action.
@@ -57,8 +65,14 @@ public static class Program
                 case ConverterAction.AdjustMentions:
                     return (int)await RunAdjustMentions(options);
 
+                case ConverterAction.MoveCustomFields:
+                    return (int)await RunMoveCustomFields(options);
+
                 case ConverterAction.DeleteIssues:
                     return (int)await RunDeletion(options);
+
+                case ConverterAction.AssocitateWithTrello:
+                    return (int)await RunAssocitateWithTrello(options);
 
                 default:
                     await Console.Error.WriteAsync("Invalid arguments supplied.\nUse -h option to see help.");
@@ -84,7 +98,7 @@ public static class Program
                 Options file format:
                   {
                       "global": {
-                          "action": "<Action (string) to perform on mentions ("All", "AdjustMentions", "DeleteIssues") [default: "All"]>", 
+                          "action": "<Action (string) to perform on mentions ("All", "AdjustMentions", "DeleteIssues", "MoveCustomFields") [default: "All"]>", 
                           "deleteIfGreaterThanIssueId": <Issue ID (int) [default: 0]>
                       },
                       "trello": {
@@ -137,6 +151,22 @@ public static class Program
     {
         using var converter = new Converter(options);
         var success = await converter.AdjustMentions(new ConversionProgress());
+
+        return success ? ExitCode.Success : ExitCode.ConversionError;
+    }
+
+    private static async Task<ExitCode> RunMoveCustomFields(ConverterOptions options)
+    {
+        using var converter = new Converter(options);
+        var success = await converter.MoveCustomFields(new ConversionProgress());
+
+        return success ? ExitCode.Success : ExitCode.ConversionError;
+    }
+
+    private static async Task<ExitCode> RunAssocitateWithTrello(ConverterOptions options)
+    {
+        using var converter = new Converter(options);
+        var success = await converter.AssocitateWithTrello(new ConversionProgress());
 
         return success ? ExitCode.Success : ExitCode.ConversionError;
     }

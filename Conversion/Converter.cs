@@ -81,7 +81,7 @@ public sealed class Converter : IDisposable
 			throw new ArgumentNullException(nameof(ConverterOptions.Trello.Token), "Missing Trello token.");
 
 		if (string.IsNullOrEmpty(options.Trello.BoardId))
-			throw new ArgumentNullException(nameof(ConverterOptions.Trello.BoardId), "Missing Trello board ID.");
+			throw new ArgumentNullException(nameof(ConverterOptions.Trello.BoardId), "Missing Trello boardCustomFields ID.");
 
 		if (!new[] { "all", "open", "visible", "closed" }.Contains(options.Trello.Include))
 			throw new ArgumentException("Valid values are: 'all', 'open', 'visible' or 'closed'", nameof(ConverterOptions.Trello.Include));
@@ -91,6 +91,238 @@ public sealed class Converter : IDisposable
 
 		if (options.GitLab.ProjectId == default)
 			throw new ArgumentNullException(nameof(ConverterOptions.GitLab.ProjectId), "Missing GitLab project ID.");
+	}
+
+	/// <summary>
+	/// Adds a comment to all issues with the Trello card ID. Only adds if not yet associated.
+	/// </summary>
+	/// <param name="progress">A progress update provider.</param>
+	public async Task<bool> AssocitateWithTrello(IProgress<ConversionProgressReport> progress)
+	{
+		progress.Report(new("Starting associate non-associated GitLab issues with their original Trello card."));
+
+		// --
+		// Grant admin privileges if Sudo option provided.
+
+		var nonAdminUsers = new List<User>();
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.GrantAdminPrivileges));
+
+			var users = await gitlab.GetAllUsers();
+
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+
+			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesGranted));
+		}
+
+		// --
+
+		var adjustCount = 0;
+
+		progress.Report(new(ConversionStep.FetchingTrelloBoard));
+
+		trelloBoard = await trello.GetBoard();
+
+		var totalCards = trelloBoard.Cards.Count;
+
+		progress.Report(new(ConversionStep.TrelloBoardFetched));
+
+		// --
+
+		var allIssues = await gitlab.GetAllIssues();
+
+		for (var i = 0; i < totalCards; i++)
+		{
+			progress.Report(new($"{i + 1}/{totalCards} Checking and associating issue with card (if not yet associated)."));
+
+			var card = trelloBoard.Cards[i];
+
+			var issue = await findGitLabIssueForTrelloCardInNotes(gitlab, card, allIssues);
+			if (issue != null) continue;
+
+			issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
+			if (issue == null) continue;
+
+			// If here, the issue is not yet associated with the Trello card.
+
+			var createAction = FindCreateCardAction(card);
+			var createdBy = FindAssociatedUserId(createAction?.IdMemberCreator);
+
+			await associateIssueWithTrelloCard(card, issue, createdBy);
+
+			progress.Report(new($"    => Added Trello association to isse #{issue.Iid}."));
+			adjustCount++;
+		}
+
+
+		// --
+		// Revoke admin privileges (of non admin users) if Sudo option provided.
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.RevokeAdminPrivileges));
+
+			await SetUserAdminPrivileges(nonAdminUsers, false, progress, ConversionStep.RevokeAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesRevoked));
+		}
+
+		// --
+
+		progress.Report(new($"Finished associating {adjustCount} GitLab issues with their original Trello card."));
+		return true;
+	}
+
+	/// <summary>
+	/// Move the custom fields from Trello to GitLab.
+	/// </summary>
+	/// <param name="progress">A progress update provider.</param>
+	public async Task<bool> MoveCustomFields(IProgress<ConversionProgressReport> progress)
+	{
+		progress.Report(new("Starting to move custom fields."));
+
+		// --
+		// Grant admin privileges if Sudo option provided.
+
+		var nonAdminUsers = new List<User>();
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.GrantAdminPrivileges));
+
+			var users = await gitlab.GetAllUsers();
+
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+
+			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesGranted));
+		}
+
+		// --
+
+		var adjustCount = 0;
+
+		progress.Report(new(ConversionStep.FetchingTrelloBoard));
+
+		trelloBoard = await trello.GetBoard();
+
+		var totalCards = trelloBoard.Cards.Count;
+
+		progress.Report(new(ConversionStep.TrelloBoardFetched));
+
+		// --
+
+		var boardCustomFields = await trello.GetAllCustomFields();
+
+		var allIssues = await gitlab.GetAllIssues();
+
+		for (var i = 0; i < totalCards; i++)
+		{
+			var any = false;
+
+			progress.Report(new($"{i + 1}/{totalCards} Checking and moving custom fields (if not yet moved)."));
+
+			var card = trelloBoard.Cards[i];
+
+			var cardCustomFieldItems = await trello.GetCardCustomFieldItems(trelloBoard.Cards[i].Id);
+			if (cardCustomFieldItems.Count == 0) continue;
+
+			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
+			if (issue == null) continue;
+
+			var descriptionAdjusted = await checkAddCustomFields(boardCustomFields, cardCustomFieldItems, issue.Description);
+
+			if (!string.IsNullOrEmpty(descriptionAdjusted) && !string.Equals(descriptionAdjusted, issue.Description))
+			{
+				try
+				{
+					await gitlab.EditIssueDescription(
+						issue.Iid,
+						new()
+						{
+							Description = descriptionAdjusted,
+						});
+
+					any = true;
+				}
+				catch (ApiException exception)
+				{
+					progress.Report(new(
+						$"Error while editing issue description: {exception.Message}\nIssue: {issue.Id} (#{issue.Iid})"));
+				}
+			}
+
+			if (any)
+			{
+				progress.Report(new("    => Added custom fields."));
+				adjustCount++;
+			}
+		}
+
+		// --
+		// Revoke admin privileges (of non admin users) if Sudo option provided.
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.RevokeAdminPrivileges));
+
+			await SetUserAdminPrivileges(nonAdminUsers, false, progress, ConversionStep.RevokeAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesRevoked));
+		}
+
+		// --
+
+		progress.Report(new($"Finished moving custom fields for {adjustCount} cards."));
+		return true;
+	}
+
+	private readonly Dictionary<int, IReadOnlyList<IssueNote>> _cacheForGitLabIssueNotes = new();
+
+	private async Task<Issue?> findGitLabIssueForTrelloCardInNotes(GitLabApi gitLabApi, Card card, IReadOnlyList<Issue> allIssues)
+	{
+		// First look for the card ID in a comment.
+		foreach (var issue in allIssues)
+		{
+			// Cache to speed up things.
+			var notes = _cacheForGitLabIssueNotes.GetValueOrDefault(issue.Id);
+			if (notes == null)
+			{
+				notes = await gitLabApi.GetAllIssueNotes(issue.Iid);
+				_cacheForGitLabIssueNotes[issue.Id] = notes;
+			}
+
+			foreach (var comment in notes)
+			{
+				if (comment.Body.Contains(card.Id))
+				{
+					return issue;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private async Task<Issue?> findGitLabIssueForTrelloCard(GitLabApi gitLabApi, Card card,
+		IReadOnlyList<Issue> allIssues)
+	{
+		// First look for the card ID in a comment.
+		var i = await findGitLabIssueForTrelloCardInNotes(gitLabApi, card, allIssues);
+		if (i != null) return i;
+
+		// Next, try to find a unique matching title.
+		var matches = allIssues.Where(j => j.Title == card.Name).ToList();
+
+		return matches.Count == 1
+			? matches.First()
+			// If multiple, do not try to adjust since we might touch the wrong issue.
+			: null;
 	}
 
 	/// <summary>
@@ -220,7 +452,7 @@ public sealed class Converter : IDisposable
 	{
 		progress.Report(new(ConversionStep.Init));
 
-		// Fetch Trello board.
+		// Fetch Trello boardCustomFields.
 
 		progress.Report(new(ConversionStep.FetchingTrelloBoard));
 
@@ -303,11 +535,26 @@ public sealed class Converter : IDisposable
 
 		// Convert all cards.
 
+		var boardCustomFields = await trello.GetAllCustomFields();
+
+		var allIssues = await gitlab.GetAllIssues();
+
 		for (var i = 0; i < totalCards; i++)
 		{
 			progress.Report(new(ConversionStep.ConvertingCards, i, totalCards));
 
-			var errors = await Convert(trelloBoard.Cards[i]);
+			var card = trelloBoard.Cards[i];
+
+			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
+			if (issue != null)
+			{
+				progress.Report(new(ConversionStep.ConvertingCards, i, totalCards, [$"Issue already exists: {issue.Id} (#{issue.Iid})"]));
+				continue;
+			}
+
+			var cardCustomFieldItems = await trello.GetCardCustomFieldItems(card.Id);
+
+			var errors = await Convert(boardCustomFields, cardCustomFieldItems, card);
 
 			if (errors.Count != 0)
 			{
@@ -373,7 +620,10 @@ public sealed class Converter : IDisposable
 	/// <summary>
 	/// Converts a Trello card to a GitLab issue.
 	/// </summary>
-	protected async Task<IReadOnlyList<string>> Convert(Card card)
+	protected async Task<IReadOnlyList<string>> Convert(
+		IReadOnlyList<BoardCustomField> boardCustomFields,
+		IReadOnlyList<CardCustomFieldItem> cardCustomFieldItems,
+		Card card)
 	{
 		var errors = new List<string>();
 
@@ -390,7 +640,7 @@ public sealed class Converter : IDisposable
 
 		// Creates GitLab issue.
 
-		Issue ?issue = null;
+		Issue? issue = null;
 		string? description;
 
 		// Verlinkungen anpassen.
@@ -426,20 +676,20 @@ public sealed class Converter : IDisposable
 				}
 			}
 
-			description = GetCardDescriptionWithChecklists(card).Truncate(DESCRIPTION_MAX_LENGTH);
+			description = (await GetCardDescriptionWithChecklistsAndCustomFields(boardCustomFields, cardCustomFieldItems, card)).Truncate(DESCRIPTION_MAX_LENGTH);
 			description = replaceAttachments(description, attachmentUrlMappings, false);
 			description = replaceMentions(description);
 
 			issue = await gitlab.CreateIssue(new()
-				{
-					CreatedAt = createAction?.Date ?? card.DateLastActivity,
-					Title = card.Name.Truncate(TITLE_MAX_LENGTH),
-					Description = description,
-					Labels = labels.Any() ? string.Join(',', labels) : null,
-					AssisgneeIds = assignees,
-					DueDate = card.Due,
-					MilestoneId = GetCardAssociatedMilestone(card),
-				},
+			{
+				CreatedAt = createAction?.Date ?? card.DateLastActivity,
+				Title = card.Name.Truncate(TITLE_MAX_LENGTH),
+				Description = description,
+				Labels = labels.Any() ? string.Join(',', labels) : null,
+				AssisgneeIds = assignees,
+				DueDate = card.Due,
+				MilestoneId = GetCardAssociatedMilestone(card),
+			},
 				createdBy
 			);
 		}
@@ -447,6 +697,13 @@ public sealed class Converter : IDisposable
 		{
 			errors.Add(GetErrorMessage("creating issue", exception));
 			return errors;
+		}
+
+		// Add one comment to identify the original Trello card.
+		// Helpful for later migrations and stuff.
+		if (true)
+		{
+			await associateIssueWithTrelloCard(card, issue, createdBy);
 		}
 
 		// Create GitLab issue's comments.
@@ -541,6 +798,26 @@ public sealed class Converter : IDisposable
 		}
 	}
 
+	private async Task associateIssueWithTrelloCard(Card card, Issue? issue, int? createdBy)
+	{
+		await gitlab.CommentIssue(
+			issue,
+			new()
+			{
+				Body = 
+					$"""
+					 Migrated from Trello card [{card.ShortLink}]({card.ShortUrl}). 
+					 
+					 <!-- 
+					 Trello card ID: '{card.Id}'. 
+					 Trello list ID: '{card.IdList}'. 
+					 -->
+					 """,
+				CreatedAt = DateTime.Now,
+			},
+			createdBy);
+	}
+
 	private string? replaceMentions(string? text)
 	{
 		if (string.IsNullOrEmpty(text)) return text;
@@ -560,7 +837,7 @@ public sealed class Converter : IDisposable
 	/// Modify attachment URLs from Trello to GitLab.
 	/// </summary>
 	private string replaceAttachments(
-		string text, 
+		string text,
 		List<AttachmentMapping> attachmentMappings,
 		bool appendNonReferenced)
 	{
@@ -598,9 +875,12 @@ public sealed class Converter : IDisposable
 	}
 
 	/// <summary>
-	/// Gets the description of a given Trello card, and adds checklists.
+	/// Gets the description of a given Trello card, and adds checklists and custom fields.
 	/// </summary>
-	protected string GetCardDescriptionWithChecklists(Card card)
+	protected async Task<string?> GetCardDescriptionWithChecklistsAndCustomFields(
+		IReadOnlyList<BoardCustomField> boardCustomFields,
+		IReadOnlyList<CardCustomFieldItem> cardCustomFieldItems,
+		Card card)
 	{
 		var description = card.Desc ?? "";
 
@@ -614,7 +894,68 @@ public sealed class Converter : IDisposable
 			}
 		}
 
+		description = await checkAddCustomFields(boardCustomFields, cardCustomFieldItems, description);
+
 		return description;
+	}
+
+	private const string CustomFieldHeadline = "### Custom Fields";
+
+	private async Task<string?> checkAddCustomFields(
+		IReadOnlyList<BoardCustomField> boardCustomFields,
+		IReadOnlyList<CardCustomFieldItem> cardCustomFieldItems,
+		string? description)
+	{
+		if (string.IsNullOrEmpty(description)) return description;
+
+		if (boardCustomFields.Count <= 0) return description;
+		if (boardCustomFields.Count <= 0) return description;
+
+		// If headline already exists, assume already added.
+		if (description.Contains(CustomFieldHeadline)) return description;
+
+		var customFields = await generateCustomFields(boardCustomFields, cardCustomFieldItems);
+
+		// No custom fields collected.
+		if (string.IsNullOrEmpty(customFields)) return description;
+
+		description += $"\n\n{customFields?.Trim()}";
+		return description;
+	}
+
+	private async Task<string?> generateCustomFields(
+		IReadOnlyList<BoardCustomField> boardCustomFields,
+		IReadOnlyList<CardCustomFieldItem> cardCustomFieldItems)
+	{
+		if (boardCustomFields.Count <= 0) return null;
+		if (boardCustomFields.Count <= 0) return null;
+
+		var result = new StringBuilder();
+		result.Append($"\n\n{CustomFieldHeadline}\n\n");
+
+		var any = false;
+
+		foreach (var boardCustomField in boardCustomFields)
+		{
+			var cardCustomFieldItem = cardCustomFieldItems.FirstOrDefault(c => c.IdCustomField == boardCustomField.Id);
+
+			if (cardCustomFieldItem == null) continue;
+
+			var value = cardCustomFieldItem.Value?.Text;
+
+			if (boardCustomField.Type == "list")
+			{
+				var option = boardCustomField.Options.FirstOrDefault(o => o.Id == value);
+				value = option?.Value?.Text;
+			}
+
+			if (string.IsNullOrEmpty(value)) continue;
+
+			result.Append($"- **{boardCustomField.Name}**: {value}\n");
+			any = true;
+		}
+
+		return any ? result.ToString() : null;
 	}
 
 	/// <summary>
@@ -622,7 +963,7 @@ public sealed class Converter : IDisposable
 	/// </summary>
 	protected List<string> GetCardAssociatedLabels(Card card)
 	{
-		string gitlabLabel;
+		string? gitlabLabel;
 		var labels = new List<string>();
 
 		foreach (var idLabel in card.IdLabels)

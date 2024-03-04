@@ -12,6 +12,9 @@ public sealed class Card
 
 	public string Desc { get; set; }
 
+	public string ShortLink { get; set; }
+	public string ShortUrl { get; set; }
+
 	public DateTime? Due { get; set; }
 
 	public IReadOnlyList<string> IdLabels { get; set; }

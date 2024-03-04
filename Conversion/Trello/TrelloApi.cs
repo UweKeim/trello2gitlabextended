@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json.Serialization;
-using System.Linq;
+﻿namespace Trello2GitLab.Conversion.Trello;
 
-namespace Trello2GitLab.Conversion.Trello;
+using Newtonsoft.Json.Serialization;
+using System.Linq;
 
 /// <summary>
 /// Trello Api helper.
@@ -114,6 +114,25 @@ internal class TrelloApi : IDisposable
 		} while (apiResponseActions.Count == limit);
 
 		return actions;
+	}
+
+	/// <summary>
+	/// Get all custom fields for a board.
+	/// </summary>
+	/// <returns></returns>
+	public async Task<IReadOnlyList<BoardCustomField>> GetAllCustomFields()
+	{
+		return await Request<IReadOnlyList<BoardCustomField>>($"{BaseUrlCore}/{BoardBaseUrl}/customFields",@"");
+	}
+
+	/// <summary>
+	/// Get all custom field items (and their values) for a card.
+	/// </summary>
+	/// <param name="cardId"></param>
+	/// <returns></returns>
+	public async Task<IReadOnlyList<CardCustomFieldItem>> GetCardCustomFieldItems(string cardId)
+	{
+		return await Request<IReadOnlyList<CardCustomFieldItem>>($"{BaseUrlCore}/cards/{cardId}/customFieldItems", @"");
 	}
 
 	public async Task<IReadOnlyList<Attachment>> GetAttachment(string cardId)

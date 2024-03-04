@@ -4,5 +4,7 @@ public enum ConverterAction
 {
 	All = 0,
 	AdjustMentions = 1,
-	DeleteIssues = 2
+	DeleteIssues = 2,
+	MoveCustomFields = 3,
+	AssocitateWithTrello = 4,
 }
