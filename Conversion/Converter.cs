@@ -81,10 +81,12 @@ public sealed class Converter : IDisposable
 			throw new ArgumentNullException(nameof(ConverterOptions.Trello.Token), "Missing Trello token.");
 
 		if (string.IsNullOrEmpty(options.Trello.BoardId))
-			throw new ArgumentNullException(nameof(ConverterOptions.Trello.BoardId), "Missing Trello boardCustomFields ID.");
+			throw new ArgumentNullException(nameof(ConverterOptions.Trello.BoardId),
+				"Missing Trello boardCustomFields ID.");
 
 		if (!new[] { "all", "open", "visible", "closed" }.Contains(options.Trello.Include))
-			throw new ArgumentException("Valid values are: 'all', 'open', 'visible' or 'closed'", nameof(ConverterOptions.Trello.Include));
+			throw new ArgumentException("Valid values are: 'all', 'open', 'visible' or 'closed'",
+				nameof(ConverterOptions.Trello.Include));
 
 		if (string.IsNullOrEmpty(options.GitLab.Token))
 			throw new ArgumentNullException(nameof(ConverterOptions.GitLab.Token), "Missing GitLab token.");
@@ -112,7 +114,8 @@ public sealed class Converter : IDisposable
 
 			var users = await gitlab.GetAllUsers();
 
-			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin)
+				.Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
 
 			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
 
@@ -137,7 +140,8 @@ public sealed class Converter : IDisposable
 
 		for (var i = 0; i < totalCards; i++)
 		{
-			progress.Report(new($"{i + 1}/{totalCards} Checking and associating issue with card (if not yet associated)."));
+			progress.Report(
+				new($"{i + 1}/{totalCards} Checking and associating issue with card (if not yet associated)."));
 
 			var card = trelloBoard.Cards[i];
 
@@ -196,7 +200,8 @@ public sealed class Converter : IDisposable
 
 			var users = await gitlab.GetAllUsers();
 
-			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin)
+				.Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
 
 			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
 
@@ -235,7 +240,8 @@ public sealed class Converter : IDisposable
 			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
 			if (issue == null) continue;
 
-			var descriptionAdjusted = await checkAddCustomFields(boardCustomFields, cardCustomFieldItems, issue.Description);
+			var descriptionAdjusted =
+				await checkAddCustomFields(boardCustomFields, cardCustomFieldItems, issue.Description);
 
 			if (!string.IsNullOrEmpty(descriptionAdjusted) && !string.Equals(descriptionAdjusted, issue.Description))
 			{
@@ -284,7 +290,8 @@ public sealed class Converter : IDisposable
 
 	private readonly Dictionary<int, IReadOnlyList<IssueNote>> _cacheForGitLabIssueNotes = new();
 
-	private async Task<Issue?> findGitLabIssueForTrelloCardInNotes(GitLabApi gitLabApi, Card card, IReadOnlyList<Issue> allIssues)
+	private async Task<Issue?> findGitLabIssueForTrelloCardInNotes(GitLabApi gitLabApi, Card card,
+		IReadOnlyList<Issue> allIssues)
 	{
 		// First look for the card ID in a comment.
 		foreach (var issue in allIssues)
@@ -344,7 +351,8 @@ public sealed class Converter : IDisposable
 
 			var users = await gitlab.GetAllUsers();
 
-			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin)
+				.Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
 
 			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
 
@@ -472,7 +480,8 @@ public sealed class Converter : IDisposable
 
 			var users = await gitlab.GetAllUsers();
 
-			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin).Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin)
+				.Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
 
 			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
 
@@ -503,11 +512,16 @@ public sealed class Converter : IDisposable
 				}
 				else
 				{
-					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones, new[] { $"Error while fetching milestone: milestone with iid '{labelMilestone.Value}' not found on project" }));
+					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones,
+						new[]
+						{
+							$"Error while fetching milestone: milestone with iid '{labelMilestone.Value}' not found on project"
+						}));
 				}
 
 				i++;
 			}
+
 			associations.Labels_Milestones = labelsMilestones;
 
 			var listsMilestones = new Dictionary<string, int>();
@@ -523,11 +537,16 @@ public sealed class Converter : IDisposable
 				}
 				else
 				{
-					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones, new[] { $"Error while fetching milestone: milestone with iid '{listMilestone.Value}' not found on project" }));
+					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones,
+						new[]
+						{
+							$"Error while fetching milestone: milestone with iid '{listMilestone.Value}' not found on project"
+						}));
 				}
 
 				i++;
 			}
+
 			associations.Lists_Milestones = listsMilestones;
 
 			progress.Report(new(ConversionStep.MilestonesFetched));
@@ -548,7 +567,8 @@ public sealed class Converter : IDisposable
 			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
 			if (issue != null)
 			{
-				progress.Report(new(ConversionStep.ConvertingCards, i, totalCards, [$"Issue already exists: {issue.Id} (#{issue.Iid})"]));
+				progress.Report(new(ConversionStep.ConvertingCards, i, totalCards,
+					[$"    ==> Issue already exists: {issue.Id} (#{issue.Iid}). Skipping."]));
 				continue;
 			}
 
@@ -587,7 +607,8 @@ public sealed class Converter : IDisposable
 	/// <param name="admin">User is admin.</param>
 	/// <param name="progress">A progress update provider.</param>
 	/// <param name="step">The step doing this action.</param>
-	protected async Task SetUserAdminPrivileges(IReadOnlyList<User> users, bool admin, IProgress<ConversionProgressReport> progress, ConversionStep step)
+	protected async Task SetUserAdminPrivileges(IReadOnlyList<User> users, bool admin,
+		IProgress<ConversionProgressReport> progress, ConversionStep step)
 	{
 		for (var i = 0; i < users.Count; i++)
 		{
@@ -601,7 +622,11 @@ public sealed class Converter : IDisposable
 			}
 			catch (ApiException exception)
 			{
-				progress.Report(new(step, i, users.Count, new[] { $"Error while {(admin ? "granting" : "revoking")} admin privilege: {exception.Message}\nUser: {user.Id} ({user.Username})" }));
+				progress.Report(new(step, i, users.Count,
+					new[]
+					{
+						$"Error while {(admin ? "granting" : "revoking")} admin privilege: {exception.Message}\nUser: {user.Id} ({user.Username})"
+					}));
 			}
 		}
 	}
@@ -676,20 +701,22 @@ public sealed class Converter : IDisposable
 				}
 			}
 
-			description = (await GetCardDescriptionWithChecklistsAndCustomFields(boardCustomFields, cardCustomFieldItems, card)).Truncate(DESCRIPTION_MAX_LENGTH);
+			description =
+				(await GetCardDescriptionWithChecklistsAndCustomFields(boardCustomFields, cardCustomFieldItems, card))
+				.Truncate(DESCRIPTION_MAX_LENGTH);
 			description = replaceAttachments(description, attachmentUrlMappings, false);
 			description = replaceMentions(description);
 
 			issue = await gitlab.CreateIssue(new()
-			{
-				CreatedAt = createAction?.Date ?? card.DateLastActivity,
-				Title = card.Name.Truncate(TITLE_MAX_LENGTH),
-				Description = description,
-				Labels = labels.Any() ? string.Join(',', labels) : null,
-				AssisgneeIds = assignees,
-				DueDate = card.Due,
-				MilestoneId = GetCardAssociatedMilestone(card),
-			},
+				{
+					CreatedAt = createAction?.Date ?? card.DateLastActivity,
+					Title = card.Name.Truncate(TITLE_MAX_LENGTH),
+					Description = description,
+					Labels = labels.Any() ? string.Join(',', labels) : null,
+					AssisgneeIds = assignees,
+					DueDate = card.Due,
+					MilestoneId = GetCardAssociatedMilestone(card),
+				},
 				createdBy
 			);
 		}
@@ -716,7 +743,8 @@ public sealed class Converter : IDisposable
 					issue,
 					new()
 					{
-						Body = replaceMentions(replaceAttachments(commentAction.Data.Text, attachmentUrlMappings, false)),
+						Body = replaceMentions(
+							replaceAttachments(commentAction.Data.Text, attachmentUrlMappings, false)),
 						CreatedAt = commentAction.Date,
 					},
 					FindAssociatedUserId(commentAction.IdMemberCreator)
@@ -804,13 +832,13 @@ public sealed class Converter : IDisposable
 			issue,
 			new()
 			{
-				Body = 
+				Body =
 					$"""
-					 Migrated from Trello card [{card.ShortLink}]({card.ShortUrl}). 
-					 
-					 <!-- 
-					 Trello card ID: '{card.Id}'. 
-					 Trello list ID: '{card.IdList}'. 
+					 Migrated from Trello card [{card.ShortLink}]({card.ShortUrl}).
+
+					 <!--
+					 Trello card ID: '{card.Id}'.
+					 Trello list ID: '{card.IdList}'.
 					 -->
 					 """,
 				CreatedAt = DateTime.Now,
@@ -994,7 +1022,8 @@ public sealed class Converter : IDisposable
 
 		if (card.IdLabels != null)
 		{
-			return associations.Labels_Milestones?.Join(card.IdLabels, lm => lm.Key, l => l, (lm, l) => lm.Value).FirstOrDefault();
+			return associations.Labels_Milestones?.Join(card.IdLabels, lm => lm.Key, l => l, (lm, l) => lm.Value)
+				.FirstOrDefault();
 		}
 
 		return null;
