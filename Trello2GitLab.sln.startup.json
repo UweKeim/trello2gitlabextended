@@ -52,7 +52,7 @@
         }
     */
   "MultiProjectConfigurations": {
-    "Onboarding-Portal (Import)": {
+    "PolBW / Onboarding-Portal (Import)": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-Onboarding-Portal.json\"",
@@ -61,7 +61,34 @@
         }
       }
     },
-    "Onboarding-Portal (LÖSCHEN)": {
+    "PolBW / EVV (Import)": {
+      "Projects": {
+        "ConsoleApp": {
+          "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-EVV.json\"",
+          "WorkingDirectory": "",
+          "StartProject": true
+        }
+      }
+    },
+    "PolBW / Infoportal (Import)": {
+      "Projects": {
+        "ConsoleApp": {
+          "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-Infoportal.json\"",
+          "WorkingDirectory": "",
+          "StartProject": true
+        }
+      }
+    },
+    "PolBW / OFT (Import)": {
+      "Projects": {
+        "ConsoleApp": {
+          "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-OFT.json\"",
+          "WorkingDirectory": "",
+          "StartProject": true
+        }
+      }
+    },
+    "PolBW / Onboarding-Portal (LÖSCHEN)": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-Onboarding-Portal.json\" --delete 7",
