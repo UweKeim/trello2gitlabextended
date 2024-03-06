@@ -973,7 +973,8 @@ public sealed class Converter : IDisposable
 
 			if (boardCustomField.Type == "list")
 			{
-				var option = boardCustomField.Options.FirstOrDefault(o => o.Id == value || o.Id == cardCustomFieldItem.IdValue?.ToString());
+				var option = boardCustomField.Options.FirstOrDefault(o =>
+					o.Id == value || o.Id == cardCustomFieldItem.IdValue?.ToString());
 				value = option?.Value?.Text;
 			}
 
