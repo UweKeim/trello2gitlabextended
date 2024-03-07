@@ -1014,6 +1014,7 @@ public sealed class Converter : IDisposable
 	{
 		if (string.IsNullOrEmpty(text)) return text;
 		if (!text.Contains(@"https://trello.com/c/")) return text;
+		if (text.Contains(uniqueInidicator)) return text;
 		if (text.Contains(@"Migrated from Trello card")) return text;
 
 		const string corePattern = @"https:\/\/trello\.com\/c\/([A-Za-z0-9]+)(\/\d+-[\w-%]+)?";
@@ -1067,6 +1068,11 @@ public sealed class Converter : IDisposable
 		return text;
 	}
 
+	/// <summary>
+	/// Never change this.
+	/// </summary>
+	private const string uniqueInidicator = @"9e5812858dd8430ebe18c496c219736a";
+
 	private async Task associateIssueWithTrelloCard(Card card, Issue? issue, int? createdBy)
 	{
 		await gitlab.CommentIssue(
@@ -1078,8 +1084,9 @@ public sealed class Converter : IDisposable
 					 Migrated from Trello card [{card.ShortLink}]({card.ShortUrl}).
 
 					 <!--
-					 Trello card ID: '{card.Id}'.
-					 Trello list ID: '{card.IdList}'.
+					 Trello card ID:   '{card.Id}'.
+					 Trello list ID:   '{card.IdList}'.
+					 Unique indicator: '{uniqueInidicator}'.
 					 -->
 					 """,
 				CreatedAt = DateTime.Now,
