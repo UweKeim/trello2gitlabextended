@@ -52,7 +52,7 @@
         }
     */
   "MultiProjectConfigurations": {
-    "Bock / VAP11 (Import)": {
+    "Bock → VAP11": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-Bock-VAP11.json\"",
@@ -61,7 +61,7 @@
         }
       }
     },
-    "PolBW / Onboarding-Portal (Import)": {
+    "PolBW → Onboarding-Portal": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-Onboarding-Portal.json\"",
@@ -70,7 +70,7 @@
         }
       }
     },
-    "PolBW / EVV (Import)": {
+    "PolBW → EVV": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-EVV.json\"",
@@ -79,7 +79,7 @@
         }
       }
     },
-    "PolBW / Infoportal (Import)": {
+    "PolBW → Infoportal": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-Infoportal.json\"",
@@ -88,7 +88,7 @@
         }
       }
     },
-    "PolBW / OFT (Import)": {
+    "PolBW → OFT": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-OFT.json\"",
@@ -97,28 +97,10 @@
         }
       }
     },
-    "PolBW / Onboarding-Portal (LÖSCHEN)": {
-      "Projects": {
-        "ConsoleApp": {
-          "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-PolBW-Onboarding-Portal.json\" --delete 7",
-          "WorkingDirectory": "",
-          "StartProject": true
-        }
-      }
-    },
-    "Test-Board-UweKeim (Import)": {
+    "UKeim → Test-Board": {
       "Projects": {
         "ConsoleApp": {
           "CommandLineArguments": "E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-Testprojekt.json\"\"",
-          "WorkingDirectory": "",
-          "StartProject": true
-        }
-      }
-    },
-    "Test-Board-UweKeim (LÖSCHEN)": {
-      "Projects": {
-        "ConsoleApp": {
-          "CommandLineArguments": "E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-Testprojekt.json\"\" --delete 0",
           "WorkingDirectory": "",
           "StartProject": true
         }
