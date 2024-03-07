@@ -90,7 +90,8 @@ internal class TrelloApi : IDisposable
 	/// <exception cref="HttpRequestException"></exception>
 	protected async Task<Board?> GetBasicBoardData()
 	{
-		return await Request<Board>($"{BaseUrlCore}/{BoardBaseUrl}", $"fields=none&cards={Include}&checklists=all&lists=all");
+		return await Request<Board>($"{BaseUrlCore}/{BoardBaseUrl}",
+			$"fields=none&cards={Include}&checklists=all&lists=all");
 	}
 
 	/// <summary>
@@ -122,7 +123,7 @@ internal class TrelloApi : IDisposable
 	/// <returns></returns>
 	public async Task<IReadOnlyList<BoardCustomField>> GetAllCustomFields()
 	{
-		return await Request<IReadOnlyList<BoardCustomField>>($"{BaseUrlCore}/{BoardBaseUrl}/customFields",@"");
+		return await Request<IReadOnlyList<BoardCustomField>>($"{BaseUrlCore}/{BoardBaseUrl}/customFields", @"");
 	}
 
 	/// <summary>
@@ -143,21 +144,31 @@ internal class TrelloApi : IDisposable
 	/// <summary>
 	/// https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
 	/// </summary>
-	public async Task<byte[]> DownloadAttachment(string attachmentUrl)
+	public async Task<byte[]?> DownloadAttachment(string attachmentUrl)
 	{
-		// Setzen des Authorization-Headers
-		client.DefaultRequestHeaders.Authorization = new("OAuth", $"oauth_consumer_key=\"{Key}\", oauth_token=\"{Token}\"");
-
-		using var response = await client.GetAsync(attachmentUrl);
-
-		var bytes = await response.Content.ReadAsByteArrayAsync();
-
-		if ((int)response.StatusCode >= 400)
+		try
 		{
-			var contentString = Encoding.Default.GetString(bytes);
-			throw new ApiException(response, contentString);
-		}
+			// Setzen des Authorization-Headers
+			client.DefaultRequestHeaders.Authorization =
+				new("OAuth", $"oauth_consumer_key=\"{Key}\", oauth_token=\"{Token}\"");
 
-		return bytes;
+			using var response = await client.GetAsync(attachmentUrl);
+
+			var bytes = await response.Content.ReadAsByteArrayAsync();
+
+			if ((int)response.StatusCode >= 400)
+			{
+				var contentString = Encoding.Default.GetString(bytes);
+				throw new ApiException(response, contentString);
+			}
+
+			return bytes;
+		}
+		catch (Exception e)
+		{
+			await Console.Error.WriteLineAsync($@"Error downloading attachment from URL '{attachmentUrl}'. Skipping.");
+			await Console.Error.WriteLineAsync(e.Message);
+			return null;
+		}
 	}
 }

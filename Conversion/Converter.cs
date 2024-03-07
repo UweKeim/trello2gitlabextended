@@ -1,6 +1,7 @@
 ﻿namespace Trello2GitLab.Conversion;
 
 using GitLab;
+using System;
 using System.Linq;
 using Trello;
 
@@ -96,9 +97,89 @@ public sealed class Converter : IDisposable
 	}
 
 	/// <summary>
-	/// Adds a comment to all issues with the Trello card ID. Only adds if not yet associated.
+	/// Replace the links in descriptions and comments that point to other Trello cards
+	/// with links to the respective GitLab issues.
 	/// </summary>
 	/// <param name="progress">A progress update provider.</param>
+	public async Task<bool> ReplaceTrelloLinks(IProgress<ConversionProgressReport> progress)
+	{
+		progress.Report(new("Starting replacing Trello card links with GitLab issue links."));
+
+		// --
+		// Grant admin privileges if Sudo option provided.
+
+		var nonAdminUsers = new List<User>();
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.GrantAdminPrivileges));
+
+			var users = await gitlab.GetAllUsers();
+
+			nonAdminUsers.AddRange(users.Where(u => !u.IsAdmin)
+				.Join(associations.Members_Users, u => u.Id, au => au.Value, (u, _) => u));
+
+			await SetUserAdminPrivileges(nonAdminUsers, true, progress, ConversionStep.GrantAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesGranted));
+		}
+
+		// --
+
+		var adjustCount = 0;
+
+		progress.Report(new(ConversionStep.FetchingTrelloBoard));
+
+		trelloBoard = await trello.GetBoard();
+
+		var totalCards = trelloBoard.Cards.Count;
+
+		progress.Report(new(ConversionStep.TrelloBoardFetched));
+
+		// --
+
+		var allIssues = await gitlab.GetAllIssues();
+
+		for (var i = 0; i < totalCards; i++)
+		{
+			progress.Report(
+				new($"{i + 1}/{totalCards} Replacing Trello card links with GitLab issue links."));
+
+			var card = trelloBoard.Cards[i];
+
+			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
+			if (issue == null) continue;
+
+			// If here, the issue is not yet associated with the Trello card.
+
+			var did = await replaceTrelloLinks(issue, allIssues, progress);
+
+			if (did)
+			{
+				progress.Report(new($"    => Replaced Trello links in issue #{issue.Iid}."));
+				adjustCount++;
+			}
+		}
+
+
+		// --
+		// Revoke admin privileges (of non admin users) if Sudo option provided.
+
+		if (gitlab.Sudo)
+		{
+			progress.Report(new(ConversionStep.RevokeAdminPrivileges));
+
+			await SetUserAdminPrivileges(nonAdminUsers, false, progress, ConversionStep.RevokeAdminPrivileges);
+
+			progress.Report(new(ConversionStep.AdminPrivilegesRevoked));
+		}
+
+		// --
+
+		progress.Report(new($"Starting replacing Trello card links with GitLab issue links."));
+		return true;
+	}
+
 	public async Task<bool> AssocitateWithTrello(IProgress<ConversionProgressReport> progress)
 	{
 		progress.Report(new("Starting associate non-associated GitLab issues with their original Trello card."));
@@ -158,7 +239,7 @@ public sealed class Converter : IDisposable
 
 			await associateIssueWithTrelloCard(card, issue, createdBy);
 
-			progress.Report(new($"    => Added Trello association to isse #{issue.Iid}."));
+			progress.Report(new($"    => Added Trello association to issue #{issue.Iid}."));
 			adjustCount++;
 		}
 
@@ -306,7 +387,7 @@ public sealed class Converter : IDisposable
 
 			foreach (var comment in notes)
 			{
-				if (comment.Body.Contains(card.Id))
+				if (comment.Body.Contains(card.Id)) // Here, intentionally the ID not the ShortLink.
 				{
 					return issue;
 				}
@@ -513,10 +594,9 @@ public sealed class Converter : IDisposable
 				else
 				{
 					progress.Report(new(ConversionStep.FetchMilestones, i, totalMilestones,
-						new[]
-						{
+						[
 							$"Error while fetching milestone: milestone with iid '{labelMilestone.Value}' not found on project"
-						}));
+						]));
 				}
 
 				i++;
@@ -584,6 +664,12 @@ public sealed class Converter : IDisposable
 
 		progress.Report(new(ConversionStep.CardsConverted));
 
+		// --
+		// As a second pass, also replace any Trello links to other cards.
+
+		await ReplaceTrelloLinks(progress);
+
+		// --
 		// Revoke admin privileges (of non admin users) if Sudo option provided.
 
 		if (gitlab.Sudo)
@@ -633,8 +719,8 @@ public sealed class Converter : IDisposable
 
 	private sealed class AttachmentMapping
 	{
-		public Attachment TrelloAttachment { get; set; }
-		public Upload GitlabAttachment { get; set; }
+		public Attachment TrelloAttachment { get; set; } = null!;
+		public Upload? GitlabAttachment { get; set; }
 
 		/// <summary>
 		/// Merken, wenn verarbeitet wurde.
@@ -678,10 +764,23 @@ public sealed class Converter : IDisposable
 				var fileName = Path.GetFileName(attachment.Url);
 				var bytes = await trello.DownloadAttachment(attachment.Url);
 
+				if (bytes == null || bytes.Length == 0)
+				{
+					attachmentUrlMappings.Add(new()
+					{
+						TrelloAttachment = attachment,
+						GitlabAttachment = null
+					});
+
+					continue;
+				}
+
 				var tempFolderPath = Path.Combine(Path.GetTempPath(),
 					$@"Trello2GitLab-{DateTime.Now.Ticks}-{Guid.NewGuid():N}");
 				try
 				{
+					fileName = sanitizeFileName(fileName);
+
 					Directory.CreateDirectory(tempFolderPath);
 					var tempFilePath = Path.Combine(tempFolderPath, fileName);
 					await File.WriteAllBytesAsync(tempFilePath, bytes);
@@ -780,7 +879,7 @@ public sealed class Converter : IDisposable
 
 		// Closes issue if the card or the list is closed.
 
-		Trello.Action closeAction = null;
+		Trello.Action? closeAction = null;
 
 		if (card.Closed)
 		{
@@ -788,7 +887,7 @@ public sealed class Converter : IDisposable
 		}
 		else
 		{
-			var list = trelloBoard.Lists.FirstOrDefault(l => l.Id == card.IdList);
+			var list = trelloBoard?.Lists.FirstOrDefault(l => l.Id == card.IdList);
 
 			if (list?.Closed == true)
 			{
@@ -824,6 +923,148 @@ public sealed class Converter : IDisposable
 			var issueInfos = issue != null ? $"\nIssue: {issue.Id} (#{issue.Iid})" : "";
 			return $"Error while {actionContext}: {exception.Message}\nCard: {card.Id}{issueInfos}";
 		}
+	}
+
+	private static string? sanitizeFileName(string? fileName)
+	{
+		if (string.IsNullOrEmpty(fileName)) return fileName;
+
+		var invalidChars = Path.GetInvalidFileNameChars();
+		var sanitizedFileName = new string(fileName
+			.Where(ch => !invalidChars.Contains(ch))
+			.ToArray());
+
+		// Optional: Ersetze spezifische Zeichen oder Muster, die Probleme verursachen könnten.
+		// Zum Beispiel, um Directory-Traversals zu verhindern (sehr rudimentär):
+		sanitizedFileName = sanitizedFileName.Replace(@"..", string.Empty);
+
+		return sanitizedFileName;
+	}
+
+	private async Task<bool> replaceTrelloLinks(
+		Issue issue,
+		IReadOnlyList<Issue> allIssues,
+		IProgress<ConversionProgressReport> progress)
+	{
+		var any = false;
+
+		// --
+		// Description.
+
+		// Adjust issue description.
+		var description = await doReplaceTrelloLinks(issue.Description, allIssues);
+
+		if (description != issue.Description)
+		{
+			try
+			{
+				await gitlab.EditIssueDescription(
+					issue.Iid,
+					new()
+					{
+						Description = description,
+					});
+
+				any = true;
+			}
+			catch (ApiException exception)
+			{
+				progress.Report(new(
+					$"Error while editing issue description: {exception.Message}\nIssue: {issue.Id} (#{issue.Iid})"));
+			}
+		}
+
+		// --
+
+		// Also adjust notes.
+		var comments = await gitlab.GetAllIssueNotes(issue.Iid);
+
+		foreach (var comment in comments)
+		{
+			var editedComment = new ModifyIssueNote
+			{
+				Body = await doReplaceTrelloLinks(comment.Body, allIssues)
+			};
+
+			if (comment.Body != editedComment.Body)
+			{
+				try
+				{
+					await gitlab.ModifyIssueNote(
+						issue,
+						comment.Id,
+						editedComment);
+
+					any = true;
+				}
+				catch (ApiException exception)
+				{
+					progress.Report(new(
+						$"Error while editing issue note: {exception.Message}\nIssue: {issue.Id} (#{issue.Iid})\nComment: {comment?.Id}"));
+				}
+			}
+		}
+
+		return any;
+	}
+
+	private async Task<string?> doReplaceTrelloLinks(
+		string? text, 
+		IReadOnlyList<Issue> allIssues)
+	{
+		if (string.IsNullOrEmpty(text)) return text;
+		if (!text.Contains(@"https://trello.com/c/")) return text;
+		if (text.Contains(@"Migrated from Trello card")) return text;
+
+		const string corePattern = @"https:\/\/trello\.com\/c\/([A-Za-z0-9]+)(\/\d+-[\w-%]+)?";
+
+		// Case 1.
+		if (true)
+		{
+			var pattern = @"\[(https?:\/\/[^\s\]]+)\]\(\1(?:\s+"".*?"")?\)";
+			var matches = Regex.Matches(text, pattern);
+
+			foreach (Match match in matches)
+			{
+				var matchesInner = Regex.Matches(match.Groups[1].Value, corePattern);
+
+				foreach (Match matchInner in matchesInner)
+				{
+					var cardId = matchInner.Groups[1].Value;
+
+					var card = trelloBoard.Cards.FirstOrDefault(c => c.ShortLink == cardId);
+					if (card == null) continue;
+
+					var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
+					if (issue == null) continue;
+
+					// Link to GitLab issue.
+					text = text.Replace(match/*inner*/.Value, $@"#{issue.Iid}");
+				}
+			}
+		}
+
+		// Case 2.
+		if (true)
+		{
+			var matches = Regex.Matches(text, corePattern);
+
+			foreach (Match match in matches)
+			{
+				var cardId = match.Groups[1].Value;
+
+				var card = trelloBoard.Cards.FirstOrDefault(c => c.ShortLink == cardId);
+				if (card == null) continue;
+
+				var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
+				if (issue == null) continue;
+
+				// Link to GitLab issue.
+				text = text.Replace(match.Value, $@"#{issue.Iid}");
+			}
+		}
+
+		return text;
 	}
 
 	private async Task associateIssueWithTrelloCard(Card card, Issue? issue, int? createdBy)
@@ -875,8 +1116,11 @@ public sealed class Converter : IDisposable
 		{
 			if (text.Contains(mapping.TrelloAttachment.Url))
 			{
-				text = text.Replace(mapping.TrelloAttachment.Url, mapping.GitlabAttachment.Url);
-				mapping.DidReplace = true;
+				if (mapping.GitlabAttachment != null)
+				{
+					text = text.Replace(mapping.TrelloAttachment.Url, mapping.GitlabAttachment.Url);
+					mapping.DidReplace = true;
+				}
 			}
 		}
 
@@ -889,7 +1133,15 @@ public sealed class Converter : IDisposable
 				text += "\n\n### Attachments\n\n";
 				foreach (var notReplacedAttachment in notReplacedAttachments)
 				{
-					text += $"- {notReplacedAttachment.GitlabAttachment.Markdown}\n";
+					if (notReplacedAttachment.GitlabAttachment != null)
+					{
+						text += $"- {notReplacedAttachment.GitlabAttachment.Markdown}\n";
+					}
+					else
+					{
+						// Keep original link, to whatever it might be.
+						text += $"- {notReplacedAttachment.TrelloAttachment.Url}\n";
+					}
 				}
 			}
 		}

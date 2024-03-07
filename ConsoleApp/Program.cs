@@ -55,6 +55,10 @@ public static class Program
 	            case [_, "--associtatewithtrello"]:
                     options.Global.Action = ConverterAction.AssocitateWithTrello;
                     break;
+
+	            case [_, "--replacetrellolinks"]:
+                    options.Global.Action = ConverterAction.ReplaceTrelloLinks;
+                    break;
             }
 
             // Execute the desired action.
@@ -74,6 +78,9 @@ public static class Program
 
                 case ConverterAction.AssocitateWithTrello:
                     return (int)await RunAssocitateWithTrello(options);
+
+                case ConverterAction.ReplaceTrelloLinks:
+                    return (int)await RunReplaceTrelloLinks(options);
 
                 default:
                     await Console.Error.WriteAsync("Invalid arguments supplied.\nUse -h option to see help.");
@@ -168,6 +175,14 @@ public static class Program
     {
         using var converter = new Converter(options);
         var success = await converter.AssocitateWithTrello(new ConversionProgress());
+
+        return success ? ExitCode.Success : ExitCode.ConversionError;
+    }
+
+    private static async Task<ExitCode> RunReplaceTrelloLinks(ConverterOptions options)
+    {
+        using var converter = new Converter(options);
+        var success = await converter.ReplaceTrelloLinks(new ConversionProgress());
 
         return success ? ExitCode.Success : ExitCode.ConversionError;
     }
