@@ -22,4 +22,9 @@ public sealed class TrelloOptions
 	/// Must be <c>"all"</c> (default), <c>"open"</c>, <c>"visible"</c> or <c>"closed"</c>.
 	/// </summary>
 	public string Include { get; set; } = "all";
+
+	/// <summary>
+	/// If specified and non-empty, only cards with the given IDs/ShortUrls will be included.
+	/// </summary>
+	public string[]? CardsToInclude { get; set; }
 }

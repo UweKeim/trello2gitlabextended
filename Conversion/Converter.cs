@@ -13,6 +13,7 @@ public sealed class Converter : IDisposable
 	private readonly TrelloApi trello;
 	private readonly GitLabApi gitlab;
 	private readonly AssociationsOptions associations;
+	private readonly ConverterOptions options;
 	private bool isDisposed;
 	private Board? trelloBoard;
 
@@ -30,6 +31,8 @@ public sealed class Converter : IDisposable
 		gitlab = new(options.GitLab);
 
 		associations = options.Associations;
+
+		this.options = options;
 	}
 
 	public void Dispose()
@@ -146,6 +149,11 @@ public sealed class Converter : IDisposable
 				new($"{i + 1}/{totalCards} Replacing Trello card links with GitLab issue links."));
 
 			var card = trelloBoard.Cards[i];
+			if (!wantIncludeCard(card))
+			{
+				progress.Report(new($"    => Skipping Trello card #{card.ShortLink}."));
+				continue;
+			}
 
 			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
 			if (issue == null) continue;
@@ -225,6 +233,11 @@ public sealed class Converter : IDisposable
 				new($"{i + 1}/{totalCards} Checking and associating issue with card (if not yet associated)."));
 
 			var card = trelloBoard.Cards[i];
+			if (!wantIncludeCard(card))
+			{
+				progress.Report(new($"    => Skipping Trello card #{card.ShortLink}."));
+				continue;
+			}
 
 			var issue = await findGitLabIssueForTrelloCardInNotes(gitlab, card, allIssues);
 			if (issue != null) continue;
@@ -314,6 +327,11 @@ public sealed class Converter : IDisposable
 			progress.Report(new($"{i + 1}/{totalCards} Checking and moving custom fields (if not yet moved)."));
 
 			var card = trelloBoard.Cards[i];
+			if (!wantIncludeCard(card))
+			{
+				progress.Report(new($"    => Skipping Trello card #{card.ShortLink}."));
+				continue;
+			}
 
 			var cardCustomFieldItems = await trello.GetCardCustomFieldItems(trelloBoard.Cards[i].Id);
 			if (cardCustomFieldItems.Count == 0) continue;
@@ -643,6 +661,11 @@ public sealed class Converter : IDisposable
 			progress.Report(new(ConversionStep.ConvertingCards, i, totalCards));
 
 			var card = trelloBoard.Cards[i];
+			if (!wantIncludeCard(card))
+			{
+				progress.Report(new($"    => Skipping Trello card #{card.ShortLink}."));
+				continue;
+			}
 
 			var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
 			if (issue != null)
@@ -807,15 +830,15 @@ public sealed class Converter : IDisposable
 			description = replaceMentions(description);
 
 			issue = await gitlab.CreateIssue(new()
-				{
-					CreatedAt = createAction?.Date ?? card.DateLastActivity,
-					Title = card.Name.Truncate(TITLE_MAX_LENGTH),
-					Description = description,
-					Labels = labels.Any() ? string.Join(',', labels) : null,
-					AssisgneeIds = assignees,
-					DueDate = card.Due,
-					MilestoneId = GetCardAssociatedMilestone(card),
-				},
+			{
+				CreatedAt = createAction?.Date ?? card.DateLastActivity,
+				Title = card.Name.Truncate(TITLE_MAX_LENGTH),
+				Description = description,
+				Labels = labels.Any() ? string.Join(',', labels) : null,
+				AssisgneeIds = assignees,
+				DueDate = card.Due,
+				MilestoneId = GetCardAssociatedMilestone(card),
+			},
 				createdBy
 			);
 		}
@@ -952,7 +975,7 @@ public sealed class Converter : IDisposable
 		// Description.
 
 		// Adjust issue description.
-		var description = await doReplaceTrelloLinks(issue.Description, allIssues);
+		var description = await doReplaceTrelloLinks(issue.Description, allIssues, progress);
 
 		if (description != issue.Description)
 		{
@@ -983,7 +1006,7 @@ public sealed class Converter : IDisposable
 		{
 			var editedComment = new ModifyIssueNote
 			{
-				Body = await doReplaceTrelloLinks(comment.Body, allIssues)
+				Body = await doReplaceTrelloLinks(comment.Body, allIssues, progress)
 			};
 
 			if (comment.Body != editedComment.Body)
@@ -1009,8 +1032,9 @@ public sealed class Converter : IDisposable
 	}
 
 	private async Task<string?> doReplaceTrelloLinks(
-		string? text, 
-		IReadOnlyList<Issue> allIssues)
+		string? text,
+		IReadOnlyList<Issue> allIssues,
+		IProgress<ConversionProgressReport> progress)
 	{
 		if (string.IsNullOrEmpty(text)) return text;
 		if (!text.Contains(@"https://trello.com/c/")) return text;
@@ -1036,6 +1060,12 @@ public sealed class Converter : IDisposable
 					var card = trelloBoard.Cards.FirstOrDefault(c => c.ShortLink == cardId);
 					if (card == null) continue;
 
+					if (!wantIncludeCard(card))
+					{
+						progress.Report(new($"    => Skipping Trello card #{card.ShortLink}."));
+						continue;
+					}
+
 					var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
 					if (issue == null) continue;
 
@@ -1056,6 +1086,12 @@ public sealed class Converter : IDisposable
 
 				var card = trelloBoard.Cards.FirstOrDefault(c => c.ShortLink == cardId);
 				if (card == null) continue;
+
+				if (!wantIncludeCard(card))
+				{
+					progress.Report(new($"    => Skipping Trello card #{card.ShortLink}."));
+					continue;
+				}
 
 				var issue = await findGitLabIssueForTrelloCard(gitlab, card, allIssues);
 				if (issue == null) continue;
@@ -1368,5 +1404,15 @@ public sealed class Converter : IDisposable
 	public async Task DeleteAllIssues(int idGreaterThan)
 	{
 		await gitlab.DeleteAllIssues(idGreaterThan);
+	}
+
+	private bool wantIncludeCard(Card? card)
+	{
+		if (card == null) return false;
+		if (options.Trello.CardsToInclude is not { Length: > 0 }) return true;
+
+		return options.Trello.CardsToInclude.Any(c =>
+			c.Equals(card.Id, StringComparison.OrdinalIgnoreCase) ||
+			c.Equals(card.ShortLink, StringComparison.OrdinalIgnoreCase));
 	}
 }

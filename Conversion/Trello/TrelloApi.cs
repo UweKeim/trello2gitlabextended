@@ -69,7 +69,7 @@ internal class TrelloApi : IDisposable
 	/// <param name="parameters">Query parameters.</param>
 	/// <exception cref="ApiException"></exception>
 	/// <exception cref="HttpRequestException"></exception>
-	protected async Task<T> Request<T>(string endpoint, string parameters)
+	protected async Task<T?> Request<T>(string endpoint, string parameters)
 	{
 		var url = $"{endpoint}?key={Key}&token={Token}&{parameters}";
 
@@ -102,7 +102,7 @@ internal class TrelloApi : IDisposable
 	/// <exception cref="HttpRequestException"></exception>
 	protected async Task<IReadOnlyList<Action>> GetAllActions()
 	{
-		const int limit = 1000;
+		const int limit = 500;
 		var actions = new List<Action>();
 
 		IReadOnlyList<Action> apiResponseActions;

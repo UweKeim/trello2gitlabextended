@@ -52,6 +52,15 @@
         }
     */
   "MultiProjectConfigurations": {
+    "Zeta → Zeta Producer": {
+      "Projects": {
+        "ConsoleApp": {
+          "CommandLineArguments": "\"E:\\cloud.uwe.co\\Ablage\\trello2gitlab-settings-Zeta-ZetaProducer.json\"",
+          "WorkingDirectory": "",
+          "StartProject": true
+        }
+      }
+    },
     "Bock → VAP11": {
       "Projects": {
         "ConsoleApp": {
